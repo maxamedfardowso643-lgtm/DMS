@@ -19,7 +19,7 @@
         <li class="nav-item dropdown">
             <a class="nav-link user-menu-trigger" data-bs-toggle="dropdown" href="#">
                 @if ($u->photo)
-                    <span class="user-avatar user-avatar-photo"><img src="{{ asset('storage/' . $u->photo) }}" alt="{{ $u->name }}"></span>
+                    <span class="user-avatar user-avatar-photo"><img src="{{ $u->photoUrl() }}" alt="{{ $u->name }}"></span>
                 @else
                     <span class="user-avatar">{{ $initials }}</span>
                 @endif

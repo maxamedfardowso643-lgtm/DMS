@@ -61,4 +61,16 @@ class User extends Authenticatable
     {
         return $this->roles->pluck('slug')->intersect($slugs)->isNotEmpty();
     }
+
+    /**
+     * Photos under images/ ship with the app (public/); anything else is an upload on the public disk.
+     */
+    public function photoUrl(int $size = 128): string
+    {
+        if (! $this->photo) {
+            return 'https://ui-avatars.com/api/?background=4f46e5&color=fff&size=' . $size . '&name=' . urlencode($this->name);
+        }
+
+        return str_starts_with($this->photo, 'images/') ? asset($this->photo) : asset('storage/' . $this->photo);
+    }
 }

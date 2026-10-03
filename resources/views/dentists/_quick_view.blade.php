@@ -2,7 +2,7 @@
     $days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 @endphp
 <div class="qv-header">
-    <img src="{{ $dentist->user->photo ? asset('storage/' . $dentist->user->photo) : 'https://ui-avatars.com/api/?background=4f46e5&color=fff&name=' . urlencode($dentist->user->name) }}" class="qv-avatar">
+    <img src="{{ $dentist->user->photoUrl() }}" class="qv-avatar">
     <div>
         <h4 class="mb-0">{{ $dentist->user->name }}</h4>
         <div class="text-muted" style="font-size:.85rem;">

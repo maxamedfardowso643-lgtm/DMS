@@ -12,7 +12,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <img id="avatar-preview"
-                     src="{{ $user->photo ? asset('storage/' . $user->photo) : 'https://ui-avatars.com/api/?background=4f46e5&color=fff&size=128&name=' . urlencode($user->name) }}"
+                     src="{{ $user->photoUrl() }}"
                      style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--border);">
                 <h5 class="mt-3 mb-0 fw-bold">{{ $user->name }}</h5>
                 <p class="text-muted mb-2" style="font-size:.85rem;">{{ $user->email }}</p>

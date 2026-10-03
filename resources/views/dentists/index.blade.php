@@ -79,6 +79,7 @@
 let dentistsTable;
 
 function avatarUrl(name, photo) {
+    if (photo && photo.startsWith("images/")) return `/${photo}`;
     return photo ? `/storage/${photo}` : `https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent(name)}`;
 }
 

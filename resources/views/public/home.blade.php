@@ -125,7 +125,7 @@
             @foreach ($dentists as $dentist)
                 <div class="col-md-6 col-lg-3">
                     <div class="pb-team-card">
-                        <img src="{{ $dentist->user->photo ? asset('storage/' . $dentist->user->photo) : 'https://ui-avatars.com/api/?background=4f46e5&color=fff&size=400&name=' . urlencode($dentist->user->name) }}" alt="{{ $dentist->user->name }}">
+                        <img src="{{ $dentist->user->photoUrl(400) }}" alt="{{ $dentist->user->name }}">
                         <div class="body">
                             <h5>{{ $dentist->user->name }}</h5>
                             <div class="role">{{ $dentist->specialization ?? 'General Dentist' }}</div>
