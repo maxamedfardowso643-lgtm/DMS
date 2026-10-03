@@ -39,8 +39,9 @@ class DentistSeeder extends Seeder
                 ['email' => $email],
                 [
                     'name' => $d['name'],
+                    'username' => 'dentist' . ($i + 1),
                     'phone' => $d['phone'],
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make('12345'),
                     'is_active' => true,
                 ]
             );

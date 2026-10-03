@@ -33,10 +33,10 @@
 
         <form action="{{ route('login.submit') }}" method="POST">
             @csrf
-            <label>Email Address</label>
+            <label>Username or Email</label>
             <div class="input-wrap">
-                <i class="fas fa-envelope"></i>
-                <input type="email" name="email" value="{{ old('email') }}" placeholder="you@clinic.com" required autofocus>
+                <i class="fas fa-user"></i>
+                <input type="text" name="login" value="{{ old('login') }}" placeholder="admin" required autofocus autocapitalize="none">
             </div>
 
             <label>Password</label>
