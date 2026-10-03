@@ -19,7 +19,11 @@
             <table class="table table-sm table-bordered mb-4">
                 <thead><tr><th>Type</th><th>Day / Date</th><th>Time</th><th>Reason</th><th>Actions</th></tr></thead>
                 <tbody>
-                    @forelse ($dentist->schedules as $s)
+                    @forelse ($dentist->schedules->sortBy([
+                        fn ($a, $b) => strcmp($b->type, $a->type),
+                        fn ($a, $b) => (($a->day_of_week + 1) % 7) <=> (($b->day_of_week + 1) % 7),
+                        fn ($a, $b) => strcmp((string) ($a->leave_date ?? $a->start_time), (string) ($b->leave_date ?? $b->start_time)),
+                    ]) as $s)
                         <tr>
                             <td class="text-capitalize">{{ $s->type }}</td>
                             <td>{{ $s->type === 'weekly' ? $days[$s->day_of_week] : $s->leave_date?->format('Y-m-d') }}</td>
@@ -60,8 +64,44 @@
                             <option value="leave">Leave / Holiday</option>
                         </select>
                     </div>
+                    @php
+                        // Week order starting Saturday; values keep 0=Sunday ... 6=Saturday.
+                        $weekOrder = [6 => 'Saturday', 0 => 'Sunday', 1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday'];
+                    @endphp
                     <div id="weekly-fields">
                         <div class="mb-3">
+                            <label class="form-label d-block">Days</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="day_mode" id="day_mode_range" value="range" checked>
+                                <label class="form-check-label" for="day_mode_range">Day range (e.g. Saturday – Thursday)</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="day_mode" id="day_mode_single" value="single">
+                                <label class="form-check-label" for="day_mode_single">Single day</label>
+                            </div>
+                        </div>
+                        <div id="day-range-fields">
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <label class="form-label">From Day</label>
+                                    <select name="day_from" class="form-control">
+                                        @foreach ($weekOrder as $v => $label)
+                                            <option value="{{ $v }}" @selected($v === 6)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label">To Day</label>
+                                    <select name="day_to" class="form-control">
+                                        @foreach ($weekOrder as $v => $label)
+                                            <option value="{{ $v }}" @selected($v === 4)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mb-3" id="day-range-preview"></small>
+                        </div>
+                        <div class="mb-3" id="single-day-fields" style="display:none;">
                             <label class="form-label">Day of Week</label>
                             <select name="day_of_week" class="form-control">
                                 <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
@@ -69,8 +109,8 @@
                             </select>
                         </div>
                         <div class="row">
-                            <div class="col-6 mb-3"><label class="form-label">Start</label><input type="time" name="start_time" class="form-control" value="09:00"></div>
-                            <div class="col-6 mb-3"><label class="form-label">End</label><input type="time" name="end_time" class="form-control" value="17:00"></div>
+                            <div class="col-6 mb-3"><label class="form-label">Start</label><input type="time" name="start_time" class="form-control" value="08:00"></div>
+                            <div class="col-6 mb-3"><label class="form-label">End</label><input type="time" name="end_time" class="form-control" value="20:00"></div>
                         </div>
                     </div>
                     <div id="leave-fields" style="display:none;">
@@ -90,8 +130,12 @@
 
 @push('js')
 <script>
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 function openScheduleModal() {
     $('#schedule-form')[0].reset();
+    $('#schedule_type').trigger('change');
+    toggleDayMode();
     $('#scheduleModal').modal('show');
 }
 
@@ -102,6 +146,26 @@ $('#schedule_type').on('change', function () {
         $('#weekly-fields').hide(); $('#leave-fields').show();
     }
 });
+
+function toggleDayMode() {
+    const range = $('input[name="day_mode"]:checked').val() === 'range';
+    $('#day-range-fields').toggle(range);
+    $('#single-day-fields').toggle(!range);
+    updateRangePreview();
+}
+
+// Shows every day the range covers, wrapping past Saturday (Sat → Thu = 6 days).
+function updateRangePreview() {
+    let d = +$('select[name="day_from"]').val();
+    const to = +$('select[name="day_to"]').val();
+    const days = [DAY_NAMES[d]];
+    while (d !== to) { d = (d + 1) % 7; days.push(DAY_NAMES[d]); }
+    $('#day-range-preview').text(`${days.length} day(s): ${days.join(', ')}`);
+}
+
+$('input[name="day_mode"]').on('change', toggleDayMode);
+$('select[name="day_from"], select[name="day_to"]').on('change', updateRangePreview);
+toggleDayMode();
 
 $('#schedule-form').on('submit', function (e) {
     e.preventDefault();

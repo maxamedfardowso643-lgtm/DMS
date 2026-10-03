@@ -67,6 +67,16 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public static function nextNumber(): string
+    {
+        $year = date('Y');
+        $last = self::where('invoice_no', 'like', "INV-$year-%")
+            ->withTrashed()->orderByDesc('invoice_no')->value('invoice_no');
+        $next = $last ? ((int) substr($last, -5)) + 1 : 1;
+
+        return "INV-$year-" . str_pad($next, 5, '0', STR_PAD_LEFT);
+    }
+
     public function getBalanceAttribute(): float
     {
         return (float) $this->total_amount - (float) $this->paid_amount;

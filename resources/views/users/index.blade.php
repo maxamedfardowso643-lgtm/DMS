@@ -70,9 +70,12 @@ $(function () {
         columns: [
             { data: 'name' }, { data: 'email' }, { data: 'roles', defaultContent: '-' },
             { data: 'is_active', render: d => d ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>' },
-            { data: 'id', orderable: false, searchable: false, render: id => `
-                <button class="btn btn-warning btn-xs" onclick='openEditUser(${id})'><i class="fas fa-edit"></i></button>
-                <button class="btn btn-danger btn-xs" onclick="deleteUser(${id})"><i class="fas fa-trash"></i></button>
+            { data: null, orderable: false, searchable: false, render: row => `
+                <button class="btn btn-warning btn-xs" onclick='openEditUser(${row.id})'><i class="fas fa-edit"></i></button>
+                ${row.is_active
+                    ? `<button class="btn btn-secondary btn-xs" onclick="toggleUserStatus(${row.id})" title="Deactivate"><i class="fas fa-user-lock"></i></button>`
+                    : `<button class="btn btn-success btn-xs" onclick="toggleUserStatus(${row.id})" title="Activate"><i class="fas fa-user-check"></i></button>`}
+                <button class="btn btn-danger btn-xs" onclick="deleteUser(${row.id})"><i class="fas fa-trash"></i></button>
             `}
         ]
     });
@@ -125,6 +128,20 @@ $('#user-form').on('submit', function (e) {
 
 function deleteUser(id) {
     confirmDelete(`/users/${id}`, () => usersTable.ajax.reload());
+}
+
+function toggleUserStatus(id) {
+    $.ajax({
+        url: `/users/${id}/toggle-status`,
+        type: 'POST',
+        success: function (res) {
+            toastr.success(res.message || 'User status updated');
+            usersTable.ajax.reload(null, false);
+        },
+        error: function (xhr) {
+            toastr.error(xhr.responseJSON?.message || 'Could not update user status');
+        },
+    });
 }
 </script>
 @endpush

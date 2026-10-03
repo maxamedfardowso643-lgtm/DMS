@@ -7,6 +7,8 @@ use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\AppointmentStatusLog;
 use App\Models\Dentist;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Patient;
 use App\Models\Schedule;
 use App\Models\Service;
@@ -132,11 +134,15 @@ class AppointmentController extends Controller
                 return $slotStart->format('H:i') < $aptEnd->format('H:i') && $slotEnd->format('H:i') > $aptStart->format('H:i');
             });
 
-            if (! $overlaps) {
+            if (! $overlaps && $slotStart->isFuture()) {
                 $slots[] = $slotStart->format('H:i');
             }
 
             $cursor->addMinutes($duration);
+        }
+
+        if (empty($slots)) {
+            return response()->json(['slots' => [], 'message' => 'No free time slots left on this day.']);
         }
 
         return response()->json(['slots' => $slots]);
@@ -148,15 +154,7 @@ class AppointmentController extends Controller
         $start = Carbon::parse($request->start_time);
         $end = $start->copy()->addMinutes($service->duration_minutes);
 
-        $conflict = Appointment::where('dentist_id', $request->dentist_id)
-            ->whereDate('appointment_date', $request->appointment_date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->where(function ($q) use ($start, $end) {
-                $q->where('start_time', '<', $end->format('H:i:s'))
-                    ->where('end_time', '>', $start->format('H:i:s'));
-            })->exists();
-
-        if ($conflict) {
+        if ($this->hasConflict($request->dentist_id, $request->appointment_date, $start, $end)) {
             return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
         }
 
@@ -200,6 +198,28 @@ class AppointmentController extends Controller
         return "APT-$year-" . str_pad($next, 5, '0', STR_PAD_LEFT);
     }
 
+    protected function nextInvoiceNumber(): string
+    {
+        $year = date('Y');
+        $last = Invoice::where('invoice_no', 'like', "INV-$year-%")
+            ->withTrashed()->orderByDesc('invoice_no')->value('invoice_no');
+        $next = $last ? ((int) substr($last, -5)) + 1 : 1;
+
+        return "INV-$year-" . str_pad($next, 5, '0', STR_PAD_LEFT);
+    }
+
+    protected function hasConflict(int $dentistId, string $date, Carbon $start, Carbon $end, ?int $excludeId = null): bool
+    {
+        return Appointment::where('dentist_id', $dentistId)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->whereDate('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->where(function ($q) use ($start, $end) {
+                $q->where('start_time', '<', $end->format('H:i:s'))
+                    ->where('end_time', '>', $start->format('H:i:s'));
+            })->exists();
+    }
+
     public function show(Appointment $appointment): View
     {
         $appointment->load(['patient', 'dentist.user', 'service', 'statusLogs.changedBy']);
@@ -218,16 +238,7 @@ class AppointmentController extends Controller
         $start = Carbon::parse($request->start_time);
         $end = $start->copy()->addMinutes($service->duration_minutes);
 
-        $conflict = Appointment::where('dentist_id', $request->dentist_id)
-            ->where('id', '!=', $appointment->id)
-            ->whereDate('appointment_date', $request->appointment_date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->where(function ($q) use ($start, $end) {
-                $q->where('start_time', '<', $end->format('H:i:s'))
-                    ->where('end_time', '>', $start->format('H:i:s'));
-            })->exists();
-
-        if ($conflict) {
+        if ($this->hasConflict($request->dentist_id, $request->appointment_date, $start, $end, $appointment->id)) {
             return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
         }
 
@@ -284,16 +295,7 @@ class AppointmentController extends Controller
         $start = Carbon::parse($request->start_time);
         $end = $start->copy()->addMinutes($duration);
 
-        $conflict = Appointment::where('dentist_id', $appointment->dentist_id)
-            ->where('id', '!=', $appointment->id)
-            ->whereDate('appointment_date', $request->appointment_date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->where(function ($q) use ($start, $end) {
-                $q->where('start_time', '<', $end->format('H:i:s'))
-                    ->where('end_time', '>', $start->format('H:i:s'));
-            })->exists();
-
-        if ($conflict) {
+        if ($this->hasConflict($appointment->dentist_id, $request->appointment_date, $start, $end, $appointment->id)) {
             return response()->json(['message' => 'Time slot conflicts with another appointment.'], 422);
         }
 
@@ -329,5 +331,143 @@ class AppointmentController extends Controller
         $appointments = $patient ? $patient->appointments()->with(['dentist.user', 'service'])->latest('appointment_date')->get() : collect();
 
         return view('appointments.my', compact('appointments'));
+    }
+
+    public function bookingForm(): View
+    {
+        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $services = Service::where('is_active', true)->get();
+
+        return view('appointments.book', compact('dentists', 'services'));
+    }
+
+    public function storeMyBooking(Request $request): JsonResponse
+    {
+        $patient = Auth::user()->patient;
+
+        if (! $patient) {
+            return response()->json(['message' => 'No patient profile is linked to your account. Please contact the clinic.'], 422);
+        }
+
+        $request->validate([
+            'dentist_id' => ['required', 'exists:dentists,id'],
+            'service_id' => ['required', 'exists:services,id'],
+            'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $service = Service::findOrFail($request->service_id);
+        $start = Carbon::parse($request->start_time);
+        $end = $start->copy()->addMinutes($service->duration_minutes);
+
+        if (Carbon::parse($request->appointment_date . ' ' . $request->start_time)->isPast()) {
+            return response()->json(['message' => 'That time has already passed. Please pick a later slot.'], 422);
+        }
+
+        if ($this->hasConflict($request->dentist_id, $request->appointment_date, $start, $end)) {
+            return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
+        }
+
+        [$appointment, $invoice] = DB::transaction(function () use ($request, $start, $end, $service, $patient) {
+            $appointment = Appointment::create([
+                'appointment_no' => $this->nextNumber(),
+                'patient_id' => $patient->id,
+                'dentist_id' => $request->dentist_id,
+                'service_id' => $request->service_id,
+                'appointment_date' => $request->appointment_date,
+                'start_time' => $start->format('H:i:s'),
+                'end_time' => $end->format('H:i:s'),
+                'source' => 'scheduled',
+                'status' => 'booked',
+                'notes' => $request->notes,
+                'created_by' => Auth::id(),
+            ]);
+
+            AppointmentStatusLog::create([
+                'appointment_id' => $appointment->id,
+                'to_status' => 'booked',
+                'changed_by' => Auth::id(),
+                'remarks' => 'Appointment self-booked via patient portal',
+            ]);
+
+            $invoice = Invoice::create([
+                'invoice_no' => $this->nextInvoiceNumber(),
+                'appointment_id' => $appointment->id,
+                'patient_id' => $patient->id,
+                'issue_date' => now(),
+                'due_date' => now(),
+                'subtotal' => $service->price,
+                'discount_amount' => 0,
+                'tax_amount' => 0,
+                'total_amount' => $service->price,
+                'paid_amount' => 0,
+                'status' => 'unpaid',
+                'notes' => "Auto-generated for appointment {$appointment->appointment_no}",
+                'created_by' => Auth::id(),
+            ]);
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'service_id' => $service->id,
+                'description' => $service->name,
+                'quantity' => 1,
+                'unit_price' => $service->price,
+                'discount_amount' => 0,
+                'tax_amount' => 0,
+                'line_total' => $service->price,
+            ]);
+
+            return [$appointment, $invoice];
+        });
+
+        ActivityLog::log('created', "Appointment {$appointment->appointment_no} self-booked", $appointment);
+
+        return response()->json([
+            'message' => 'Appointment booked successfully. The fee has been added to your outstanding balance.',
+            'appointment' => $appointment,
+            'invoice_total' => (float) $invoice->total_amount,
+            'redirect' => route('my-appointments'),
+        ], 201);
+    }
+
+    public function cancelMyBooking(Request $request, Appointment $appointment): JsonResponse
+    {
+        $patient = Auth::user()->patient;
+
+        abort_unless($patient && $appointment->patient_id === $patient->id, 403);
+
+        if (! in_array($appointment->status, ['booked', 'confirmed'])) {
+            return response()->json(['message' => 'Only booked or confirmed appointments can be cancelled.'], 422);
+        }
+
+        $startsAt = Carbon::parse($appointment->appointment_date->format('Y-m-d') . ' ' . $appointment->start_time);
+        if ($startsAt->isPast()) {
+            return response()->json(['message' => 'This appointment has already started or passed.'], 422);
+        }
+
+        $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+        $reason = $request->reason ?: 'Cancelled by patient';
+        $from = $appointment->status;
+
+        DB::transaction(function () use ($appointment, $from, $reason) {
+            $appointment->update(['status' => 'cancelled', 'cancellation_reason' => $reason]);
+
+            AppointmentStatusLog::create([
+                'appointment_id' => $appointment->id,
+                'from_status' => $from,
+                'to_status' => 'cancelled',
+                'changed_by' => Auth::id(),
+                'remarks' => $reason,
+            ]);
+
+            // Drop the auto-generated fee if nothing has been paid on it yet.
+            $appointment->invoice()->where('paid_amount', 0)->whereIn('status', ['draft', 'unpaid'])
+                ->update(['status' => 'cancelled']);
+        });
+
+        ActivityLog::log('status_changed', "Appointment {$appointment->appointment_no} cancelled by patient", $appointment);
+
+        return response()->json(['message' => 'Your appointment has been cancelled.']);
     }
 }

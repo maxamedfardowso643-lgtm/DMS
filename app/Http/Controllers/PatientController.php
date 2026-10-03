@@ -42,7 +42,6 @@ class PatientController extends Controller
                     'patient_code' => $p->patient_code,
                     'full_name' => $p->full_name,
                     'phone' => $p->phone,
-                    'email' => $p->email,
                     'gender' => $p->gender,
                     'is_active' => $p->is_active,
                 ]),

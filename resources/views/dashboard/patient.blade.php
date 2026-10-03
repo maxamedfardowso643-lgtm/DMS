@@ -7,6 +7,35 @@
 @endsection
 
 @section('content')
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color:var(--text);">Welcome back, {{ explode(' ', auth()->user()->name)[0] }} 👋</h4>
+        <p class="mb-0" style="color:var(--text-muted);font-size:.9rem;">Here's an overview of your appointments and account balance.</p>
+    </div>
+    <a href="{{ route('book-appointment') }}" class="btn btn-primary"><i class="fas fa-calendar-plus me-1"></i> Book Appointment</a>
+</div>
+
+<div class="row mb-1">
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-danger">
+            <div class="inner">
+                <h3>{{ number_format($outstandingBalance, 2) }}</h3>
+                <p>Outstanding Amount</p>
+            </div>
+            <div class="icon"><i class="fas fa-file-invoice-dollar"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-6">
+        <div class="small-box bg-info">
+            <div class="inner">
+                <h3>{{ $upcomingAppointments->count() }}</h3>
+                <p>Upcoming Appointments</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-check"></i></div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-7">
         <div class="card">

@@ -90,6 +90,13 @@ class PaymentController extends Controller
         $invoice = Invoice::findOrFail($request->invoice_id);
         $paymentMethod = PaymentMethod::findOrFail($request->payment_method_id);
 
+        $amountDue = round($invoice->balance - (float) ($request->discount_amount ?? 0), 2);
+        if ($request->type === 'payment' && round((float) $request->amount, 2) > $amountDue) {
+            return response()->json([
+                'message' => 'Amount cannot be more than the amount due ($' . number_format(max($amountDue, 0), 2) . ').',
+            ], 422);
+        }
+
         $payment = DB::transaction(function () use ($request, $invoice, $paymentMethod) {
             if ($request->filled('discount_amount') && $request->discount_amount > 0) {
                 $invoice->increment('discount_amount', $request->discount_amount);

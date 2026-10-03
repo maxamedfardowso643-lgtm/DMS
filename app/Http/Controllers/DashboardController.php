@@ -47,14 +47,20 @@ class DashboardController extends Controller
             ->orderBy('appointment_date')
             ->get();
 
-        $revenueTrend = Payment::selectRaw('payment_date, SUM(amount) as total')
-            ->where('type', 'payment')
-            ->whereBetween('payment_date', [$today->copy()->subDays(29), $today])
-            ->groupBy('payment_date')
-            ->orderBy('payment_date')
-            ->get();
+        $collected = (float) Payment::where('type', 'payment')->sum('amount');
+        $refunds = (float) Payment::where('type', 'refund')->sum('amount');
 
-        return view('dashboard.index', compact('stats', 'todaysAppointments', 'lowStockItems', 'appointmentsPerDay', 'revenueTrend'));
+        $netBalance = [
+            'billed' => (float) Invoice::whereNotIn('status', ['draft', 'cancelled'])->sum('total_amount'),
+            'collected' => $collected,
+            'refunds' => $refunds,
+            'net' => $collected - $refunds,
+            'outstanding' => (float) Invoice::whereIn('status', ['unpaid', 'partially_paid', 'overdue'])
+                ->selectRaw('COALESCE(SUM(GREATEST(total_amount - paid_amount, 0)), 0) as due')
+                ->value('due'),
+        ];
+
+        return view('dashboard.index', compact('stats', 'todaysAppointments', 'lowStockItems', 'appointmentsPerDay', 'netBalance'));
     }
 
     protected function patientDashboard(): View
@@ -72,6 +78,10 @@ class DashboardController extends Controller
             ? $patient->invoices()->latest()->take(5)->get()
             : collect();
 
-        return view('dashboard.patient', compact('patient', 'upcomingAppointments', 'invoices'));
+        $outstandingBalance = $patient
+            ? $patient->invoices()->whereIn('status', ['unpaid', 'partially_paid', 'overdue'])->get()->sum(fn ($i) => (float) $i->balance)
+            : 0;
+
+        return view('dashboard.patient', compact('patient', 'upcomingAppointments', 'invoices', 'outstandingBalance'));
     }
 }

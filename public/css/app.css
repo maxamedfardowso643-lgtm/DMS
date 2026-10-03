@@ -307,6 +307,7 @@ textarea.form-control { resize: vertical; }
 .small-box .inner h3 { font-size: 1.9rem; font-weight: 800; margin-bottom: .2rem; }
 .small-box .inner p { font-size: .82rem; font-weight: 500; opacity: .92; }
 .small-box .icon { font-size: 4.2rem; opacity: .18; top: .6rem; right: .5rem; }
+.small-box.bg-primary { background: linear-gradient(135deg, #818cf8, #4f46e5) !important; }
 .small-box.bg-info { background: linear-gradient(135deg, #38bdf8, #0284c7) !important; }
 .small-box.bg-success { background: linear-gradient(135deg, #34d399, #059669) !important; }
 .small-box.bg-warning { background: linear-gradient(135deg, #fbbf24, #d97706) !important; }
@@ -391,8 +392,8 @@ textarea.form-control { resize: vertical; }
         radial-gradient(circle at 10% 15%, rgba(56,189,248,.16), transparent 40%);
 }
 .login-card {
-    position: relative; z-index: 1; width: 100%; max-width: 400px;
-    background: var(--surface, #fff); border-radius: 22px; padding: 2.75rem 2.25rem;
+    position: relative; z-index: 1; width: 100%; max-width: 480px;
+    background: var(--surface, #fff); border-radius: 22px; padding: 3rem 3.25rem;
     box-shadow: 0 30px 70px rgba(0,0,0,.35);
     text-align: center;
 }
@@ -501,4 +502,71 @@ textarea.form-control { resize: vertical; }
     body.printing-modal .modal-header .btn-close,
     body.printing-modal .modal-footer,
     body.printing-modal .no-print { display: none !important; }
+
+    /* ---------- Printable report sheet ---------- */
+    .main-header, .main-sidebar, .content-header, .main-footer,
+    #reportScreen { display: none !important; }
+
+    #printArea { display: block !important; }
+
+    body, .content-wrapper { background: #fff !important; }
+    .content-wrapper { margin-left: 0 !important; }
+
+    #printArea .print-header { text-align: center; margin-bottom: 1.5rem; border-bottom: 2px solid #1a2035; padding-bottom: 1rem; }
+    #printArea .print-header h1 { font-size: 1.5rem; font-weight: 800; margin: 0 0 .2rem; color: #000; }
+    #printArea .print-header h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .5rem; color: #333; }
+    #printArea .print-header p { font-size: .85rem; color: #444; margin: .1rem 0; }
+    #printArea .print-header .print-meta { font-size: .75rem; color: #666; }
+
+    #printArea .print-section-title {
+        font-size: .95rem; font-weight: 700; color: #000; margin: 1.4rem 0 .5rem;
+        padding-bottom: .25rem; border-bottom: 1px solid #999;
+        break-after: avoid; page-break-after: avoid;
+    }
+
+    #printArea table.print-table {
+        width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: .5rem;
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    #printArea table.print-table th,
+    #printArea table.print-table td {
+        border: 1px solid #999; padding: .4rem .6rem; text-align: left; color: #000;
+    }
+    #printArea table.print-table thead th {
+        background: #eef0f5 !important; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    #printArea table.print-table tbody tr:nth-child(even) { background: #f7f8fb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #printArea table.print-summary th, #printArea table.print-summary td { text-align: center; font-weight: 700; }
+
+    #printArea .print-footer { text-align: center; font-size: .72rem; color: #666; margin-top: 1.5rem; }
+
+    @page { size: A4; margin: 16mm 14mm; }
 }
+
+/* Reporting Center — report cards */
+.report-card {
+    transition: transform .15s ease, box-shadow .15s ease;
+    border: 1px solid var(--border, #e5e7eb);
+}
+.report-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.08);
+}
+.report-filter-bar .report-active-filters .badge { font-weight: 500; }
+
+/* Reporting Center — clean report tables */
+.report-table-card { border: 1px solid var(--border, #e5e7eb); border-radius: .6rem; overflow: hidden; }
+.report-table-card .card-header { background: #fafbfe; font-weight: 600; }
+.report-table thead th {
+    background: #f7f8fc;
+    border-bottom: 2px solid #e9ebf3;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #6b7280;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.report-table td, .report-table th { padding: .65rem .9rem; vertical-align: middle; }
+.report-table tbody tr:hover { background: #f5f7ff; }
+.report-table tfoot td { background: #f7f8fc; border-top: 2px solid #e9ebf3; }

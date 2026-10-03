@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DentistController;
@@ -10,6 +13,10 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Reports\AppointmentReportController;
+use App\Http\Controllers\Reports\FinancialReportController;
+use App\Http\Controllers\Reports\PatientReportController;
+use App\Http\Controllers\Reports\TreatmentReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ServiceController;
@@ -26,11 +33,19 @@ Route::get('/our-team', [PublicController::class, 'team'])->name('public.team');
 Route::get('/gallery', [PublicController::class, 'gallery'])->name('public.gallery');
 Route::get('/contact', [PublicController::class, 'contact'])->name('public.contact');
 Route::post('/contact', [PublicController::class, 'submitContact'])->name('public.contact.submit');
-Route::post('/book-appointment', [PublicController::class, 'submitBookingRequest'])->name('public.book-appointment');
+Route::post('/appointment-request', [PublicController::class, 'submitBookingRequest'])->name('public.book-appointment');
+Route::post('/testimonials', [PublicController::class, 'submitTestimonial'])->name('public.testimonials.submit');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('login', [LoginController::class, 'login'])->name('login.submit');
+    Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('register', [RegisterController::class, 'register'])->name('register.submit');
+
+    Route::get('password/forgot', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('password/forgot', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::get('password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
 });
 
 Route::post('logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
@@ -59,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('dentists', DentistController::class);
         Route::get('dentists/{dentist}/quick-view', [DentistController::class, 'quickView'])->name('dentists.quick-view');
         Route::resource('users', UserController::class);
+        Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::resource('roles', RoleController::class);
         Route::resource('services', ServiceController::class);
         Route::resource('schedules', ScheduleController::class);
@@ -68,9 +84,14 @@ Route::middleware('auth')->group(function () {
 
         Route::get('leads', [\App\Http\Controllers\Admin\LeadController::class, 'index'])->name('leads.index');
         Route::post('leads/requests/{appointmentRequest}/status', [\App\Http\Controllers\Admin\LeadController::class, 'updateStatus'])->name('leads.requests.status');
+        Route::post('leads/requests/{appointmentRequest}/convert', [\App\Http\Controllers\Admin\LeadController::class, 'convert'])->name('leads.requests.convert');
         Route::delete('leads/requests/{appointmentRequest}', [\App\Http\Controllers\Admin\LeadController::class, 'destroyRequest'])->name('leads.requests.destroy');
         Route::post('leads/messages/{contactMessage}/read', [\App\Http\Controllers\Admin\LeadController::class, 'markMessageRead'])->name('leads.messages.read');
         Route::delete('leads/messages/{contactMessage}', [\App\Http\Controllers\Admin\LeadController::class, 'destroyMessage'])->name('leads.messages.destroy');
+        Route::post('leads/testimonials/{testimonial}/approve', [\App\Http\Controllers\Admin\LeadController::class, 'approveTestimonial'])->name('leads.testimonials.approve');
+        Route::post('leads/testimonials/{testimonial}/unapprove', [\App\Http\Controllers\Admin\LeadController::class, 'unapproveTestimonial'])->name('leads.testimonials.unapprove');
+        Route::post('leads/testimonials/{testimonial}/add-as-lead', [\App\Http\Controllers\Admin\LeadController::class, 'addTestimonialAsLead'])->name('leads.testimonials.add-as-lead');
+        Route::delete('leads/testimonials/{testimonial}', [\App\Http\Controllers\Admin\LeadController::class, 'destroyTestimonial'])->name('leads.testimonials.destroy');
     });
 
     Route::middleware('role:admin,receptionist,dentist')->group(function () {
@@ -99,12 +120,45 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,accountant')->group(function () {
         Route::resource('inventory', InventoryController::class);
         Route::post('inventory/{inventory}/stock-movement', [InventoryController::class, 'stockMovement'])->name('inventory.stock-movement');
-        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-        Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+    });
+
+    // Reporting Center: hub is open to every role that can see at least one report;
+    // individual report routes are further restricted to match REPORT PERMISSIONS below.
+    Route::middleware('role:admin,accountant,dentist,receptionist')->prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+
+        Route::middleware('role:admin,receptionist,dentist')->prefix('patients')->name('patients.')->group(function () {
+            Route::get('/registration', [PatientReportController::class, 'registration'])->name('registration');
+            Route::get('/registration/export', [PatientReportController::class, 'registrationExport'])->name('registration.export');
+            Route::get('/registration/pdf', [PatientReportController::class, 'registrationPdf'])->name('registration.pdf');
+        });
+
+        Route::middleware('role:admin,receptionist,dentist')->prefix('appointments')->name('appointments.')->group(function () {
+            Route::get('/summary', [AppointmentReportController::class, 'summary'])->name('summary');
+            Route::get('/summary/export', [AppointmentReportController::class, 'summaryExport'])->name('summary.export');
+            Route::get('/summary/pdf', [AppointmentReportController::class, 'summaryPdf'])->name('summary.pdf');
+        });
+
+        Route::middleware('role:admin,accountant,dentist')->prefix('treatments')->name('treatments.')->group(function () {
+            Route::get('/summary', [TreatmentReportController::class, 'summary'])->name('summary');
+            Route::get('/summary/export', [TreatmentReportController::class, 'summaryExport'])->name('summary.export');
+            Route::get('/summary/pdf', [TreatmentReportController::class, 'summaryPdf'])->name('summary.pdf');
+        });
+
+        Route::middleware('role:admin,accountant')->prefix('financial')->name('financial.')->group(function () {
+            Route::get('/revenue', [FinancialReportController::class, 'revenue'])->name('revenue');
+            Route::get('/revenue/export', [FinancialReportController::class, 'revenueExport'])->name('revenue.export');
+            Route::get('/revenue/pdf', [FinancialReportController::class, 'revenuePdf'])->name('revenue.pdf');
+            Route::get('/revenue/drilldown', [FinancialReportController::class, 'revenueDrilldown'])->name('revenue.drilldown');
+        });
     });
 
     Route::middleware('role:patient')->group(function () {
         Route::get('my-appointments', [AppointmentController::class, 'myAppointments'])->name('my-appointments');
         Route::get('my-invoices', [InvoiceController::class, 'myInvoices'])->name('my-invoices');
+        Route::get('book-appointment', [AppointmentController::class, 'bookingForm'])->name('book-appointment');
+        Route::post('book-appointment', [AppointmentController::class, 'storeMyBooking'])->name('book-appointment.store');
+        Route::get('book-appointment/available-slots', [AppointmentController::class, 'availableSlots'])->name('book-appointment.available-slots');
+        Route::post('my-appointments/{appointment}/cancel', [AppointmentController::class, 'cancelMyBooking'])->name('my-appointments.cancel');
     });
 });

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\DateInput;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,6 +11,13 @@ class StorePatientRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('date_of_birth')) {
+            $this->merge(['date_of_birth' => DateInput::toIso($this->input('date_of_birth'))]);
+        }
     }
 
     public function rules(): array

@@ -104,4 +104,21 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User deleted successfully.']);
     }
+
+    public function toggleStatus(Request $request, User $user): JsonResponse
+    {
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'You cannot deactivate your own account.'], 422);
+        }
+
+        $user->update(['is_active' => ! $user->is_active]);
+
+        ActivityLog::log(
+            $user->is_active ? 'activated' : 'deactivated',
+            "User {$user->name} " . ($user->is_active ? 'activated' : 'deactivated'),
+            $user
+        );
+
+        return response()->json(['message' => 'User status updated.', 'is_active' => $user->is_active]);
+    }
 }

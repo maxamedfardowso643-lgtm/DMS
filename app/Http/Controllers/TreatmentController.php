@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\DentalChartEntry;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Prescription;
+use App\Models\Service;
 use App\Models\Treatment;
 use App\Models\TreatmentDetail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -37,7 +41,9 @@ class TreatmentController extends Controller
             ]);
         }
 
-        return view('treatments.index');
+        $services = Service::where('is_active', true)->orderBy('name')->get(['id', 'name', 'price']);
+
+        return view('treatments.index', compact('services'));
     }
 
     public function patientAppointments(Request $request): JsonResponse
@@ -52,6 +58,7 @@ class TreatmentController extends Controller
         return response()->json($appointments->map(fn ($a) => [
             'id' => $a->id,
             'label' => $a->appointment_date->format('Y-m-d') . ' — ' . ($a->dentist->user->name ?? '-') . ' (' . ($a->service->name ?? '-') . ')',
+            'service_id' => $a->service_id,
         ]));
     }
 
@@ -67,11 +74,19 @@ class TreatmentController extends Controller
             'diagnosis' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'tooth_conditions' => ['nullable', 'array'],
+            'services' => ['required', 'array', 'min:1'],
+            'services.*.service_id' => ['required', 'exists:services,id'],
+            'services.*.quantity' => ['required', 'integer', 'min:1'],
+            'services.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'services.*.tooth_number' => ['nullable', 'string', 'max:10'],
+        ], [
+            'services.required' => 'Add at least one service performed.',
         ]);
 
-        $appointment = Appointment::with('service')->findOrFail($data['appointment_id']);
+        $appointment = Appointment::with(['service', 'patient'])->findOrFail($data['appointment_id']);
+        $serviceNames = Service::whereIn('id', array_column($data['services'], 'service_id'))->pluck('name', 'id');
 
-        $treatment = DB::transaction(function () use ($data, $appointment) {
+        [$treatment, $invoice] = DB::transaction(function () use ($data, $appointment, $serviceNames) {
             $treatment = Treatment::create([
                 'appointment_id' => $appointment->id,
                 'patient_id' => $appointment->patient_id,
@@ -81,12 +96,15 @@ class TreatmentController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            TreatmentDetail::create([
-                'treatment_id' => $treatment->id,
-                'service_id' => $appointment->service_id,
-                'quantity' => 1,
-                'unit_price' => $appointment->service->price ?? 0,
-            ]);
+            foreach ($data['services'] as $line) {
+                TreatmentDetail::create([
+                    'treatment_id' => $treatment->id,
+                    'service_id' => $line['service_id'],
+                    'tooth_number' => $line['tooth_number'] ?? null,
+                    'quantity' => $line['quantity'],
+                    'unit_price' => $line['unit_price'],
+                ]);
+            }
 
             foreach ($data['tooth_conditions'] ?? [] as $tooth => $condition) {
                 if ($condition) {
@@ -100,12 +118,68 @@ class TreatmentController extends Controller
                 }
             }
 
-            return $treatment;
+            return [$treatment, $this->createInvoice($appointment, $data['services'], $serviceNames)];
         });
 
         ActivityLog::log('created', "Treatment recorded for {$appointment->patient->full_name}", $treatment);
 
-        return response()->json(['message' => 'Treatment recorded successfully.'], 201);
+        if (! $invoice) {
+            return response()->json([
+                'message' => 'Treatment recorded. This appointment already had an invoice, so no new invoice was created.',
+            ], 201);
+        }
+
+        ActivityLog::log('created', "Invoice {$invoice->invoice_no} generated from treatment", $invoice);
+
+        $canViewInvoices = collect(['admin', 'receptionist', 'accountant'])->contains(fn ($r) => Auth::user()->hasRole($r));
+
+        return response()->json([
+            'message' => "Treatment recorded and invoice {$invoice->invoice_no} generated.",
+            'invoice_url' => $canViewInvoices ? route('invoices.show', $invoice) : null,
+        ], 201);
+    }
+
+    /**
+     * Bills the services performed as an unpaid invoice, unless the appointment is already invoiced.
+     */
+    protected function createInvoice(Appointment $appointment, array $lines, $serviceNames): ?Invoice
+    {
+        if ($appointment->invoice()->exists()) {
+            return null;
+        }
+
+        $total = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price']);
+
+        $invoice = Invoice::create([
+            'invoice_no' => Invoice::nextNumber(),
+            'appointment_id' => $appointment->id,
+            'patient_id' => $appointment->patient_id,
+            'issue_date' => today(),
+            'due_date' => today(),
+            'subtotal' => $total,
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+            'total_amount' => $total,
+            'paid_amount' => 0,
+            'status' => 'unpaid',
+            'created_by' => Auth::id(),
+        ]);
+
+        foreach ($lines as $line) {
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'service_id' => $line['service_id'],
+                'description' => $serviceNames[$line['service_id']] ?? 'Service',
+                'tooth_number' => $line['tooth_number'] ?? null,
+                'quantity' => $line['quantity'],
+                'unit_price' => $line['unit_price'],
+                'discount_amount' => 0,
+                'tax_amount' => 0,
+                'line_total' => $line['quantity'] * $line['unit_price'],
+            ]);
+        }
+
+        return $invoice;
     }
 
     public function show(Treatment $treatment): View

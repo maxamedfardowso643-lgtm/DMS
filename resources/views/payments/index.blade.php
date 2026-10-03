@@ -72,7 +72,15 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Amount to Pay *</label>
-                                <input type="number" step="0.01" name="amount" id="pay_amount" class="form-control" required>
+                                <input type="number" step="0.01" name="amount" id="pay_amount" class="form-control" min="0.01" required>
+                            </div>
+                            <div class="col-md-12 mb-3" id="pay_summary" style="display:none;">
+                                <div class="d-flex flex-wrap gap-3 p-2 px-3" style="background:var(--surface-2);border-radius:var(--radius);font-size:.85rem;">
+                                    <div>Invoice Balance: <b id="pay_sum_balance">$0.00</b></div>
+                                    <div>Discount: <b id="pay_sum_discount">$0.00</b></div>
+                                    <div>Amount Due: <b id="pay_sum_due">$0.00</b></div>
+                                    <div>Remaining After Payment: <b id="pay_sum_remaining">$0.00</b></div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Payment Method *</label>
@@ -139,10 +147,10 @@ $(function () {
         loadPatientOutstanding(patient.id);
     });
 
-    $('#pay_invoice_select').on('change', function () {
-        const inv = selectedPatientInvoices.find(i => i.id == $(this).val());
-        if (inv) $('#pay_amount').val(inv.balance);
-    });
+    // Choosing an invoice or entering a discount recalculates the amount to pay.
+    $('#pay_invoice_select').on('change', fillAmountDue);
+    $('#pay_discount').on('input', fillAmountDue);
+    $('#pay_amount').on('input', updatePaymentSummary);
 
     $('#pay_method_select').on('change', toggleSenderField);
     toggleSenderField();
@@ -160,6 +168,40 @@ function toggleSenderField() {
     $('#pay_sender_wrap').toggle(code === 'edahab' || code === 'sahal' || code === 'bank_transfer');
 }
 
+const money = n => '$' + (+n || 0).toFixed(2);
+
+function selectedInvoice() {
+    return selectedPatientInvoices.find(i => i.id == $('#pay_invoice_select').val());
+}
+
+function amountDue() {
+    const inv = selectedInvoice();
+    if (!inv) return 0;
+    const discount = Math.min(Math.max(+$('#pay_discount').val() || 0, 0), inv.balance);
+    return Math.round((inv.balance - discount) * 100) / 100;
+}
+
+function fillAmountDue() {
+    // When editing, the balance already excludes this payment, so keep the saved amount.
+    if ($('#pay_payment_id').val()) { updatePaymentSummary(); return; }
+    const due = amountDue();
+    $('#pay_amount').val(due > 0 ? due.toFixed(2) : '').attr('max', due.toFixed(2));
+    updatePaymentSummary();
+}
+
+function updatePaymentSummary() {
+    const inv = selectedInvoice();
+    $('#pay_summary').toggle(!!inv);
+    if (!inv) return;
+    const due = amountDue();
+    const remaining = due - (+$('#pay_amount').val() || 0);
+    $('#pay_sum_balance').text(money(inv.balance));
+    $('#pay_sum_discount').text(money(inv.balance - due));
+    $('#pay_sum_due').text(money(due));
+    $('#pay_sum_remaining').text(money(Math.max(remaining, 0)))
+        .toggleClass('text-danger', remaining > 0.004).toggleClass('text-success', remaining <= 0.004);
+}
+
 function openPaymentModal() {
     resetPaymentFlow();
     $('#paymentModalLabel').text('Record Payment');
@@ -174,12 +216,14 @@ function resetPaymentFlow() {
     $('#pay-step-form').hide();
     $('#pay-footer').hide();
     $('#payment-form')[0]?.reset();
+    $('#pay_amount').removeAttr('max');
+    $('#pay_summary').hide();
 }
 
 function loadPatientOutstanding(patientId) {
     $.get(`/patients/${patientId}/outstanding`, function (res) {
         renderPatientAndInvoices(res.patient, res.invoices, res.total_balance);
-        $('#pay_amount').val(res.invoices.length ? res.invoices[0].balance : '');
+        fillAmountDue();
         $('#pay-step-search').hide();
         $('#pay-step-form').show();
         $('#pay-footer').show();
@@ -219,6 +263,7 @@ function openEditPayment(id) {
         $('input[name="sender_phone"]').val(p.sender_phone);
         $('input[name="reference_no"]').val(p.reference_no);
         $('textarea[name="notes"]').val(p.notes);
+        updatePaymentSummary();
 
         $('#pay-step-search').hide();
         $('#pay-step-form').show();
@@ -232,6 +277,10 @@ function openEditPayment(id) {
 function submitPayment() {
     if (!$('#pay_invoice_select').val()) {
         toastr.error('This patient has no outstanding invoice to pay.');
+        return;
+    }
+    if (!$('#pay_payment_id').val() && +$('#pay_amount').val() > amountDue() + 0.004) {
+        toastr.error(`Amount cannot be more than the amount due (${money(amountDue())}).`);
         return;
     }
 
@@ -249,7 +298,7 @@ function submitPayment() {
         },
         error: function (xhr) {
             if (xhr.status === 422) {
-                toastr.error(Object.values(xhr.responseJSON.errors || {}).flat()[0] || 'Validation failed.');
+                toastr.error(Object.values(xhr.responseJSON.errors || {}).flat()[0] || xhr.responseJSON.message || 'Validation failed.');
             } else {
                 toastr.error(xhr.responseJSON?.message || 'Something went wrong.');
             }

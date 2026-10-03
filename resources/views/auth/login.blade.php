@@ -40,22 +40,34 @@
             </div>
 
             <label>Password</label>
-            <div class="input-wrap">
+            <div class="input-wrap" style="position:relative;">
                 <i class="fas fa-lock"></i>
-                <input type="password" name="password" placeholder="••••••••" required>
+                <input type="password" name="password" id="password" placeholder="••••••••" required>
+                <i class="fas fa-eye" id="toggle-password" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);left:auto;cursor:pointer;color:var(--text-muted);"></i>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-3" style="font-size:.82rem;">
                 <label class="d-flex align-items-center gap-2" style="color:var(--text-muted);">
                     <input type="checkbox" name="remember" style="margin-right:.4rem;"> Remember me
                 </label>
+                <a href="{{ route('password.request') }}" style="color:var(--primary);font-weight:600;text-decoration:none;">Forgot password?</a>
             </div>
 
             <button type="submit" class="btn-login">Sign In <i class="fas fa-arrow-right ms-1"></i></button>
         </form>
 
+        <p class="mb-2" style="font-size:.82rem;color:var(--text-muted);">Don't have an account? <a href="{{ route('register') }}" style="color:var(--primary);font-weight:600;text-decoration:none;">Register</a></p>
         <a href="{{ route('public.home') }}" class="back-to-site"><i class="fas fa-arrow-left me-1"></i> Back to website</a>
     </div>
 </div>
+<script>
+    document.getElementById('toggle-password').addEventListener('click', function () {
+        const input = document.getElementById('password');
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        this.classList.toggle('fa-eye', showing);
+        this.classList.toggle('fa-eye-slash', !showing);
+    });
+</script>
 </body>
 </html>

@@ -7,6 +7,7 @@ use App\Models\ContactMessage;
 use App\Models\Dentist;
 use App\Models\Service;
 use App\Models\Setting;
+use App\Models\Testimonial;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -23,8 +24,9 @@ class PublicController extends Controller
             'services' => Service::where('is_active', true)->count(),
             'years' => 8,
         ];
+        $testimonials = Testimonial::where('is_approved', true)->latest()->take(6)->get();
 
-        return view('public.home', compact('services', 'dentists', 'stats'));
+        return view('public.home', compact('services', 'dentists', 'stats', 'testimonials'));
     }
 
     public function about(): View
@@ -90,5 +92,20 @@ class PublicController extends Controller
         AppointmentRequest::create($data + ['status' => 'pending']);
 
         return response()->json(['message' => 'Request received! Our team will contact you shortly to confirm your appointment.']);
+    }
+
+    public function submitTestimonial(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'email' => ['nullable', 'email', 'max:150'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'message' => ['required', 'string', 'max:1000'],
+        ]);
+
+        Testimonial::create($data + ['rating' => $data['rating'] ?? 5]);
+
+        return back()->with('success', 'Thank you for sharing your experience! It will appear on our site once reviewed.');
     }
 }

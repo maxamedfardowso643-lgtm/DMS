@@ -173,6 +173,61 @@
                     </div>
                 </div>
             </div>
+            @foreach ($testimonials as $t)
+                <div class="col-md-4">
+                    <div class="pb-testimonial">
+                        <div class="stars">{{ str_repeat('★', $t->rating) }}{{ str_repeat('☆', 5 - $t->rating) }}</div>
+                        <p>"{{ $t->message }}"</p>
+                        <div class="who">
+                            <div><strong>{{ $t->name }}</strong><span>Patient</span></div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-8">
+                @if (session('success'))
+                    <div class="alert alert-success" style="border-radius:12px;">{{ session('success') }}</div>
+                @endif
+                <div class="text-center mb-4">
+                    <h4>Share Your Experience</h4>
+                    <p class="text-muted">Let others know how your visit went.</p>
+                </div>
+                <form method="POST" action="{{ route('public.testimonials.submit') }}" class="pb-form-floating">
+                    @csrf
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="name" class="form-control" value="{{ old('name') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ old('email') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" name="phone" class="form-control" value="{{ old('phone') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Rating</label>
+                            <select name="rating" class="form-select">
+                                @for ($i = 5; $i >= 1; $i--)
+                                    <option value="{{ $i }}">{{ str_repeat('★', $i) }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Your Comment *</label>
+                            <textarea name="message" class="form-control" rows="3" required>{{ old('message') }}</textarea>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary px-5"><i class="fas fa-paper-plane me-2"></i>Submit Comment</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </section>

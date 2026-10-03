@@ -81,11 +81,11 @@
                 </li>
                 @endif
 
-                @if ($user->hasAnyRole(['admin', 'accountant']))
+                @if ($user->hasAnyRole(['admin', 'accountant', 'dentist', 'receptionist']))
                 <li class="nav-item">
                     <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-chart-line"></i>
-                        <p>Reports</p>
+                        <p>Reports &amp; Analytics</p>
                     </a>
                 </li>
                 @endif
@@ -145,6 +145,12 @@
 
                 @if ($user->hasRole('patient'))
                 <li class="nav-header">MY ACCOUNT</li>
+                <li class="nav-item">
+                    <a href="{{ route('book-appointment') }}" class="nav-link {{ request()->routeIs('book-appointment') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-calendar-plus"></i>
+                        <p>Book Appointment</p>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="{{ route('my-appointments') }}" class="nav-link {{ request()->routeIs('my-appointments') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-calendar-check"></i>

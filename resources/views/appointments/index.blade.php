@@ -211,6 +211,11 @@ $(function () {
         $('#apt_patient_id').val(patient.id);
         $('#apt_patient_meta').text(patient.meta);
     });
+
+    if (new URLSearchParams(window.location.search).get('book')) {
+        openBookModal();
+        history.replaceState(null, '', window.location.pathname);
+    }
 });
 
 function openBookModal() {

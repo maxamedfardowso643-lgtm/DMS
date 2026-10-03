@@ -17,3 +17,9 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Thesis documents and scratch files
+*.docx
+*.docx.bak
+~$*
+farduus.txt

@@ -13,7 +13,7 @@
         <p class="mb-0" style="color:var(--text-muted);font-size:.9rem;">Here's what's happening at your clinic today, {{ now()->format('l, F j, Y') }}.</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('appointments.index') }}" class="btn btn-primary btn-sm"><i class="fas fa-calendar-plus me-1"></i> New Appointment</a>
+        <a href="{{ route('appointments.index', ['book' => 1]) }}" class="btn btn-primary btn-sm"><i class="fas fa-calendar-plus me-1"></i> New Appointment</a>
         <a href="{{ route('invoices.index') }}" class="btn btn-secondary btn-sm"><i class="fas fa-file-invoice me-1"></i> New Invoice</a>
     </div>
 </div>
@@ -68,8 +68,22 @@
     </div>
     <div class="col-md-5">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Revenue Trend (30 Days)</h3></div>
-            <div class="card-body"><canvas id="revenueChart" height="110"></canvas></div>
+            <div class="card-header"><h3 class="card-title">Net Balance of System</h3></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:120px;flex-shrink:0;"><canvas id="balanceChart"></canvas></div>
+                    <div class="flex-grow-1">
+                        <div style="color:var(--text-muted);font-size:.8rem;">Net Balance (collected − refunds)</div>
+                        <div class="fw-bold mb-2" style="font-size:1.6rem;color:var(--text);">${{ number_format($netBalance['net'], 2) }}</div>
+                        <table class="table table-sm table-borderless mb-0" style="font-size:.85rem;">
+                            <tr><td class="ps-0"><span class="badge rounded-pill me-1" style="background:#4f46e5;">&nbsp;</span>Total Billed</td><td class="text-end pe-0">${{ number_format($netBalance['billed'], 2) }}</td></tr>
+                            <tr><td class="ps-0"><span class="badge rounded-pill me-1" style="background:#10b981;">&nbsp;</span>Collected</td><td class="text-end pe-0">${{ number_format($netBalance['collected'], 2) }}</td></tr>
+                            <tr><td class="ps-0"><span class="badge rounded-pill me-1" style="background:#ef4444;">&nbsp;</span>Refunds</td><td class="text-end pe-0">${{ number_format($netBalance['refunds'], 2) }}</td></tr>
+                            <tr><td class="ps-0"><span class="badge rounded-pill me-1" style="background:#f59e0b;">&nbsp;</span>Outstanding</td><td class="text-end pe-0">${{ number_format($netBalance['outstanding'], 2) }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -138,12 +152,20 @@ $(function () {
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
     });
 
-    const revLabels = @json($revenueTrend->pluck('payment_date'));
-    const revData = @json($revenueTrend->pluck('total'));
-    new Chart(document.getElementById('revenueChart'), {
-        type: 'line',
-        data: { labels: revLabels, datasets: [{ label: 'Revenue', data: revData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.12)', fill: true, tension: 0.35, pointRadius: 0 }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+    new Chart(document.getElementById('balanceChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Net Balance', 'Refunds', 'Outstanding'],
+            datasets: [{
+                data: [{{ max($netBalance['net'], 0) }}, {{ $netBalance['refunds'] }}, {{ $netBalance['outstanding'] }}],
+                backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, cutout: '70%',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.label}: $${c.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 })}` } } }
+        }
     });
 });
 </script>

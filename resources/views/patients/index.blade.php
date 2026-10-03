@@ -21,7 +21,6 @@
                     <th>Code</th>
                     <th>Name</th>
                     <th>Phone</th>
-                    <th>Email</th>
                     <th>Gender</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -63,7 +62,7 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Date of Birth</label>
-                            <input type="date" name="date_of_birth" class="form-control">
+                            @include('partials.dob-input', ['class' => 'form-control'])
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Gender</label>
@@ -77,11 +76,7 @@
                             <label class="form-label">Phone</label>
                             <input type="text" name="phone" class="form-control">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label class="form-label">Address</label>
                             <input type="text" name="address" class="form-control">
                         </div>
@@ -158,7 +153,6 @@ $(function () {
             { data: 'patient_code' },
             { data: 'full_name' },
             { data: 'phone', defaultContent: '-' },
-            { data: 'email', defaultContent: '-' },
             { data: 'gender', defaultContent: '-' },
             { data: 'is_active', render: d => d ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>' },
             {
@@ -223,6 +217,7 @@ function openEditPatient(id) {
         $.each(patient, function (key, value) {
             $(`#patient-form [name="${key}"]`).val(value);
         });
+        DobInput.fill($('#patient-form [name="date_of_birth"]')[0], patient.date_of_birth);
         $('#patient-photo-preview').attr('src', patient.photo
             ? `/storage/${patient.photo}`
             : 'https://ui-avatars.com/api/?background=4f46e5&color=fff&name=' + encodeURIComponent(patient.first_name + ' ' + patient.last_name));

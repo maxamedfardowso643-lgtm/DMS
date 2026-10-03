@@ -75,7 +75,7 @@ class InvoiceController extends Controller
             [$subtotal, $discountTotal, $taxTotal, $grandTotal] = $this->calculateTotals($request->items);
 
             $invoice = Invoice::create([
-                'invoice_no' => $this->nextNumber(),
+                'invoice_no' => Invoice::nextNumber(),
                 'appointment_id' => $request->appointment_id,
                 'patient_id' => $request->patient_id,
                 'issue_date' => $request->issue_date,
@@ -176,16 +176,6 @@ class InvoiceController extends Controller
         $invoices = $patient ? $patient->invoices()->latest()->get() : collect();
 
         return view('invoices.my', compact('invoices'));
-    }
-
-    protected function nextNumber(): string
-    {
-        $year = date('Y');
-        $last = Invoice::where('invoice_no', 'like', "INV-$year-%")
-            ->withTrashed()->orderByDesc('invoice_no')->value('invoice_no');
-        $next = $last ? ((int) substr($last, -5)) + 1 : 1;
-
-        return "INV-$year-" . str_pad($next, 5, '0', STR_PAD_LEFT);
     }
 
     protected function calculateTotals(array $items): array
