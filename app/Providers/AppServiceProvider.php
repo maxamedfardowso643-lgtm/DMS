@@ -22,6 +22,12 @@ class AppServiceProvider extends ServiceProvider
     {
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
+
+            // public/storage is gitignored, so recreate the link on fresh deploys
+            // or uploaded photos (dentists, patients, profiles) return 404.
+            if (! file_exists(public_path('storage'))) {
+                @symlink(storage_path('app/public'), public_path('storage'));
+            }
         }
     }
 }
