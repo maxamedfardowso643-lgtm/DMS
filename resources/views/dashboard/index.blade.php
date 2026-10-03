@@ -20,7 +20,7 @@
 
 <div class="row">
     <div class="col-lg-3 col-6">
-        <div class="small-box bg-info">
+        <div class="small-box bg-info stat-link" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalTodayAppointments" title="Click to view details">
             <div class="inner">
                 <h3>{{ $stats['todays_appointments'] }}</h3>
                 <p>Today's Appointments</p>
@@ -29,7 +29,7 @@
         </div>
     </div>
     <div class="col-lg-3 col-6">
-        <div class="small-box bg-success">
+        <div class="small-box bg-success stat-link" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalPatients" title="Click to view details">
             <div class="inner">
                 <h3>{{ $stats['total_patients'] }}</h3>
                 <p>Total Patients</p>
@@ -38,7 +38,7 @@
         </div>
     </div>
     <div class="col-lg-3 col-6">
-        <div class="small-box bg-warning">
+        <div class="small-box bg-warning stat-link" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalPendingInvoices" title="Click to view details">
             <div class="inner">
                 <h3>{{ $stats['pending_invoices'] }}</h3>
                 <p>Pending Invoices</p>
@@ -47,7 +47,7 @@
         </div>
     </div>
     <div class="col-lg-3 col-6">
-        <div class="small-box bg-danger">
+        <div class="small-box bg-danger stat-link" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalRevenue" title="Click to view details">
             <div class="inner">
                 <h3>${{ number_format($stats['revenue_this_month'], 0) }}</h3>
                 <p>Revenue This Month</p>
@@ -134,17 +134,174 @@
         </div>
     </div>
 </div>
+
+@php($user = auth()->user())
+
+{{-- Today's Appointments --}}
+<div class="modal fade" id="modalTodayAppointments" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calendar-check me-2 text-info"></i>Today's Appointments ({{ $todaysAppointments->count() }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead><tr><th>Time</th><th>Patient</th><th>Dentist</th><th>Service</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @forelse ($todaysAppointments as $apt)
+                            <tr>
+                                <td>{{ \Illuminate\Support\Carbon::parse($apt->start_time)->format('H:i') }}</td>
+                                <td>{{ $apt->patient->full_name ?? '-' }}</td>
+                                <td>{{ $apt->dentist->user->name ?? '-' }}</td>
+                                <td>{{ $apt->service->name ?? '-' }}</td>
+                                <td><span class="badge bg-{{ $apt->statusBadgeColor() }}">{{ ucfirst(str_replace('_',' ',$apt->status)) }}</span></td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="text-center py-4" style="color:var(--text-soft);">No appointments today.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if ($user->hasAnyRole(['admin', 'receptionist', 'dentist']))
+                <div class="modal-footer"><a href="{{ route('appointments.index') }}" class="btn btn-primary btn-sm">View all appointments</a></div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- Patients --}}
+<div class="modal fade" id="modalPatients" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-injured me-2 text-success"></i>Patients ({{ $stats['total_patients'] }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead><tr><th>Code</th><th>Name</th><th>Gender</th><th>Phone</th><th>Registered</th></tr></thead>
+                    <tbody>
+                        @forelse ($recentPatients as $p)
+                            <tr>
+                                <td>{{ $p->patient_code }}</td>
+                                <td>{{ $p->full_name }}</td>
+                                <td>{{ ucfirst($p->gender ?? '-') }}</td>
+                                <td>{{ $p->phone ?? '-' }}</td>
+                                <td>{{ $p->created_at?->format('M j, Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="text-center py-4" style="color:var(--text-soft);">No patients yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small style="color:var(--text-muted);">
+                    @if ($stats['total_patients'] > $recentPatients->count()) Showing the {{ $recentPatients->count() }} most recent. @endif
+                </small>
+                @if ($user->hasAnyRole(['admin', 'receptionist']))
+                    <a href="{{ route('patients.index') }}" class="btn btn-primary btn-sm">View all patients</a>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Pending Invoices --}}
+<div class="modal fade" id="modalPendingInvoices" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-invoice-dollar me-2 text-warning"></i>Pending Invoices ({{ $pendingInvoices->count() }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead><tr><th>Invoice</th><th>Patient</th><th>Due Date</th><th class="text-end">Total</th><th class="text-end">Balance</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @forelse ($pendingInvoices as $inv)
+                            <tr>
+                                <td>{{ $inv->invoice_no }}</td>
+                                <td>{{ $inv->patient->full_name ?? '-' }}</td>
+                                <td>{{ $inv->due_date?->format('M j, Y') ?? '-' }}</td>
+                                <td class="text-end">${{ number_format($inv->total_amount, 2) }}</td>
+                                <td class="text-end fw-semibold">${{ number_format($inv->balance, 2) }}</td>
+                                <td><span class="badge bg-{{ $inv->statusBadgeColor() }}">{{ ucfirst(str_replace('_',' ',$inv->status)) }}</span></td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="text-center py-4" style="color:var(--text-soft);">No pending invoices.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @if ($pendingInvoices->isNotEmpty())
+                        <tfoot><tr class="fw-bold"><td colspan="4">Total outstanding</td><td class="text-end">${{ number_format($pendingInvoices->sum(fn ($i) => (float) $i->balance), 2) }}</td><td></td></tr></tfoot>
+                    @endif
+                </table>
+            </div>
+            @if ($user->hasAnyRole(['admin', 'receptionist', 'accountant']))
+                <div class="modal-footer"><a href="{{ route('invoices.index') }}" class="btn btn-primary btn-sm">View all invoices</a></div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- Revenue This Month --}}
+<div class="modal fade" id="modalRevenue" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-dollar-sign me-2 text-danger"></i>Revenue — {{ now()->format('F Y') }} ({{ $monthPayments->count() }} payments)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead><tr><th>Date</th><th>Payment No</th><th>Patient</th><th>Method</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>
+                        @forelse ($monthPayments as $pay)
+                            <tr>
+                                <td>{{ $pay->payment_date?->format('M j, Y') }}</td>
+                                <td>{{ $pay->payment_no }}</td>
+                                <td>{{ $pay->patient->full_name ?? '-' }}</td>
+                                <td>{{ $pay->paymentMethod->name ?? ucfirst(str_replace('_', ' ', $pay->method ?? '-')) }}</td>
+                                <td class="text-end">${{ number_format($pay->amount, 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="text-center py-4" style="color:var(--text-soft);">No payments received this month.</td></tr>
+                        @endforelse
+                    </tbody>
+                    @if ($monthPayments->isNotEmpty())
+                        <tfoot><tr class="fw-bold"><td colspan="4">Total</td><td class="text-end">${{ number_format($stats['revenue_this_month'], 2) }}</td></tr></tfoot>
+                    @endif
+                </table>
+            </div>
+            @if ($user->hasAnyRole(['admin', 'receptionist', 'accountant']))
+                <div class="modal-footer"><a href="{{ route('payments.index') }}" class="btn btn-primary btn-sm">View all payments</a></div>
+            @endif
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('css')
+<style>
+    .stat-link { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+    .stat-link:hover, .stat-link:focus-visible { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.15); outline: none; }
+</style>
+@endpush
 
 @push('js')
 <script>
 $(function () {
+    $('.stat-link').on('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+    });
+
     const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
     const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
     Chart.defaults.color = textColor;
     Chart.defaults.borderColor = gridColor;
 
-    const apptLabels = @json($appointmentsPerDay->pluck('appointment_date'));
+    const apptLabels = @json($appointmentsPerDay->map(fn ($d) => \Illuminate\Support\Carbon::parse($d->appointment_date)->format('D, M j')));
     const apptData = @json($appointmentsPerDay->pluck('total'));
     new Chart(document.getElementById('appointmentsChart'), {
         type: 'bar',

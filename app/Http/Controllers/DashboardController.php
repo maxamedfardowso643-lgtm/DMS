@@ -47,6 +47,21 @@ class DashboardController extends Controller
             ->orderBy('appointment_date')
             ->get();
 
+        // Detail lists shown when a stat card is clicked
+        $recentPatients = Patient::latest()->take(50)->get();
+
+        $pendingInvoices = Invoice::with('patient')
+            ->whereIn('status', ['unpaid', 'partially_paid', 'overdue'])
+            ->orderBy('due_date')
+            ->get();
+
+        $monthPayments = Payment::with(['patient', 'paymentMethod'])
+            ->where('type', 'payment')
+            ->whereMonth('payment_date', $today->month)
+            ->whereYear('payment_date', $today->year)
+            ->latest('payment_date')
+            ->get();
+
         $collected = (float) Payment::where('type', 'payment')->sum('amount');
         $refunds = (float) Payment::where('type', 'refund')->sum('amount');
 
@@ -60,7 +75,7 @@ class DashboardController extends Controller
                 ->value('due'),
         ];
 
-        return view('dashboard.index', compact('stats', 'todaysAppointments', 'lowStockItems', 'appointmentsPerDay', 'netBalance'));
+        return view('dashboard.index', compact('stats', 'todaysAppointments', 'lowStockItems', 'appointmentsPerDay', 'netBalance', 'recentPatients', 'pendingInvoices', 'monthPayments'));
     }
 
     protected function patientDashboard(): View
