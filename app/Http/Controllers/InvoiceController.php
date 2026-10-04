@@ -39,7 +39,7 @@ class InvoiceController extends Controller
                 'data' => $invoices->map(fn ($i) => [
                     'id' => $i->id,
                     'invoice_no' => $i->invoice_no,
-                    'patient' => $i->patient->full_name,
+                    'patient' => $i->patient->full_name ?? '-',
                     'issue_date' => $i->issue_date->format('Y-m-d'),
                     'total_amount' => number_format($i->total_amount, 2),
                     'paid_amount' => number_format($i->paid_amount, 2),

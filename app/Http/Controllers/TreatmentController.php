@@ -34,7 +34,7 @@ class TreatmentController extends Controller
                 'data' => $treatments->map(fn ($t) => [
                     'id' => $t->id,
                     'visit_date' => $t->visit_date->format('Y-m-d'),
-                    'patient' => $t->patient->full_name,
+                    'patient' => $t->patient->full_name ?? '-',
                     'dentist' => $t->dentist->user->name ?? '-',
                     'diagnosis' => $t->diagnosis,
                 ]),
@@ -121,7 +121,7 @@ class TreatmentController extends Controller
             return [$treatment, $this->createInvoice($appointment, $data['services'], $serviceNames)];
         });
 
-        ActivityLog::log('created', "Treatment recorded for {$appointment->patient->full_name}", $treatment);
+        ActivityLog::log('created', "Treatment recorded for " . ($appointment->patient->full_name ?? '-'), $treatment);
 
         if (! $invoice) {
             return response()->json([

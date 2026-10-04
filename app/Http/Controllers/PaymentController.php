@@ -39,7 +39,7 @@ class PaymentController extends Controller
                     'id' => $p->id,
                     'payment_no' => $p->payment_no,
                     'invoice_no' => $p->invoice->invoice_no ?? '-',
-                    'patient' => $p->patient->full_name,
+                    'patient' => $p->patient->full_name ?? '-',
                     'payment_date' => $p->payment_date->format('Y-m-d'),
                     'amount' => number_format($p->amount, 2),
                     'method' => $p->method,
@@ -146,10 +146,10 @@ class PaymentController extends Controller
         return response()->json([
             'payment' => $payment,
             'patient' => [
-                'id' => $payment->patient->id,
-                'name' => $payment->patient->full_name,
-                'code' => $payment->patient->patient_code,
-                'phone' => $payment->patient->phone,
+                'id' => $payment->patient?->id,
+                'name' => $payment->patient->full_name ?? '-',
+                'code' => $payment->patient->patient_code ?? '-',
+                'phone' => $payment->patient->phone ?? '-',
             ],
             'invoices' => $invoices->map(fn ($i) => [
                 'id' => $i->id,
