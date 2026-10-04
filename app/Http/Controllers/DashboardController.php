@@ -21,9 +21,11 @@ class DashboardController extends Controller
         }
 
         $today = today();
+        $dentistId = $user->scopedDentistId();
+        $mine = fn ($q) => $q->when($dentistId, fn ($q) => $q->where('dentist_id', $dentistId));
 
         $stats = [
-            'todays_appointments' => Appointment::whereDate('appointment_date', $today)->count(),
+            'todays_appointments' => Appointment::whereDate('appointment_date', $today)->tap($mine)->count(),
             'total_patients' => Patient::count(),
             'pending_invoices' => Invoice::whereIn('status', ['unpaid', 'partially_paid', 'overdue'])->count(),
             'revenue_this_month' => Payment::where('type', 'payment')
@@ -34,6 +36,7 @@ class DashboardController extends Controller
 
         $todaysAppointments = Appointment::with(['patient', 'dentist.user', 'service'])
             ->whereDate('appointment_date', $today)
+            ->tap($mine)
             ->orderBy('start_time')
             ->get();
 
@@ -43,6 +46,7 @@ class DashboardController extends Controller
 
         $appointmentsPerDay = Appointment::selectRaw('appointment_date, COUNT(*) as total')
             ->whereBetween('appointment_date', [$today->copy()->subDays(6), $today])
+            ->tap($mine)
             ->groupBy('appointment_date')
             ->orderBy('appointment_date')
             ->get();

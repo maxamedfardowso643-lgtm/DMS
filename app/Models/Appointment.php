@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\AppointmentAssigned;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,30 @@ class Appointment extends Model
         return [
             'appointment_date' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Let the dentist know when an appointment lands on (or moves within) their schedule.
+        static::created(fn (Appointment $a) => $a->notifyDentist('new'));
+
+        static::updated(function (Appointment $a) {
+            if ($a->wasChanged('dentist_id')) {
+                $a->notifyDentist('new');
+            } elseif ($a->wasChanged(['appointment_date', 'start_time'])) {
+                $a->notifyDentist('rescheduled');
+            }
+        });
+    }
+
+    public function notifyDentist(string $kind): void
+    {
+        $user = $this->dentist?->user;
+
+        // No need to tell dentists about changes they made themselves.
+        if ($user && $user->id !== auth()->id()) {
+            $user->notify(new AppointmentAssigned($this, $kind));
+        }
     }
 
     public function patient(): BelongsTo

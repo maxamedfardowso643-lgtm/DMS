@@ -16,6 +16,52 @@
                 <i class="theme-toggle-icon fas fa-moon"></i>
             </a>
         </li>
+        @if ($u->dentist)
+            @php
+                $unreadCount = $u->unreadNotifications()->count();
+                $recentNotes = $u->notifications()->latest()->take(8)->get();
+            @endphp
+            <li class="nav-item dropdown">
+                <a class="nav-link position-relative" data-bs-toggle="dropdown" href="#" title="Appointment notifications">
+                    <i class="fas fa-bell"></i>
+                    <span id="notif-badge" class="badge bg-danger rounded-pill position-absolute" style="top:2px;right:0;font-size:.6rem;{{ $unreadCount ? '' : 'display:none;' }}">{{ $unreadCount }}</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" style="min-width:320px;">
+                    <div class="dropdown-header d-flex justify-content-between align-items-center">
+                        <span>Appointments</span>
+                        @if ($unreadCount)
+                            <form action="{{ route('notifications.read-all') }}" method="POST" class="m-0">
+                                @csrf
+                                <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:.75rem;">Mark all read</button>
+                            </form>
+                        @endif
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    @forelse ($recentNotes as $note)
+                        <a href="{{ route('notifications.open', $note->id) }}" class="dropdown-item" style="white-space:normal;{{ $note->read_at ? '' : 'background:rgba(79,70,229,.08);' }}">
+                            <div style="font-weight:{{ $note->read_at ? 500 : 700 }};font-size:.85rem;">
+                                <i class="fas {{ ($note->data['kind'] ?? '') === 'rescheduled' ? 'fa-calendar-alt text-warning' : 'fa-calendar-plus text-primary' }}"></i>
+                                {{ ($note->data['kind'] ?? '') === 'rescheduled' ? 'Appointment rescheduled' : 'New appointment' }}
+                            </div>
+                            <div style="font-size:.78rem;">{{ $note->data['patient'] ?? '-' }} · {{ $note->data['service'] ?? '-' }}</div>
+                            <div style="font-size:.72rem;color:var(--text-soft);">{{ $note->data['date'] ?? '' }} {{ $note->data['time'] ?? '' }} · {{ $note->created_at->diffForHumans() }}</div>
+                        </a>
+                    @empty
+                        <div class="dropdown-item text-center" style="cursor:default;font-size:.8rem;color:var(--text-soft);">No notifications yet</div>
+                    @endforelse
+                </div>
+            </li>
+            @push('js')
+            <script>
+                // Keep the bell count fresh while the dentist has a page open.
+                setInterval(function () {
+                    $.getJSON('{{ route('notifications.count') }}', function (r) {
+                        $('#notif-badge').text(r.unread).toggle(r.unread > 0);
+                    });
+                }, 60000);
+            </script>
+            @endpush
+        @endif
         <li class="nav-item dropdown">
             <a class="nav-link user-menu-trigger" data-bs-toggle="dropdown" href="#">
                 @if ($u->photo)

@@ -63,6 +63,18 @@ class User extends Authenticatable
     }
 
     /**
+     * Dentist id to limit appointment lists to, or null when the user should see the whole clinic.
+     */
+    public function scopedDentistId(): ?int
+    {
+        if (! $this->hasRole(Role::DENTIST) || $this->hasAnyRole([Role::ADMIN, Role::RECEPTIONIST])) {
+            return null;
+        }
+
+        return $this->dentist?->id;
+    }
+
+    /**
      * Photos under images/ ship with the app (public/); anything else is an upload on the public disk.
      */
     public function photoUrl(int $size = 128): string

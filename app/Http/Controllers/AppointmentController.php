@@ -25,7 +25,9 @@ class AppointmentController extends Controller
     public function index(Request $request): View|JsonResponse
     {
         if ($request->ajax()) {
-            $query = Appointment::with(['patient', 'dentist.user', 'service'])->latest('appointment_date');
+            $dentistId = $request->user()->scopedDentistId();
+            $query = Appointment::with(['patient', 'dentist.user', 'service'])->latest('appointment_date')
+                ->when($dentistId, fn ($q) => $q->where('dentist_id', $dentistId));
 
             if ($search = $request->get('search')['value'] ?? null) {
                 $query->where(function ($q) use ($search) {
@@ -34,7 +36,7 @@ class AppointmentController extends Controller
                 });
             }
 
-            $total = Appointment::count();
+            $total = Appointment::when($dentistId, fn ($q) => $q->where('dentist_id', $dentistId))->count();
             $filtered = $query->count();
 
             $appointments = $query->skip($request->get('start', 0))->take($request->get('length', 10))->get();
@@ -73,6 +75,7 @@ class AppointmentController extends Controller
     {
         $appointments = Appointment::with(['patient', 'dentist.user', 'service'])
             ->whereBetween('appointment_date', [$request->get('start'), $request->get('end')])
+            ->when($request->user()->scopedDentistId(), fn ($q, $id) => $q->where('dentist_id', $id))
             ->get();
 
         return response()->json($appointments->map(fn ($a) => [

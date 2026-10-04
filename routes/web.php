@@ -57,6 +57,10 @@ Route::middleware('auth')->group(function () {
     Route::put('profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::put('profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 
+    Route::get('notifications/count', [\App\Http\Controllers\NotificationController::class, 'count'])->name('notifications.count');
+    Route::get('notifications/{id}/open', [\App\Http\Controllers\NotificationController::class, 'open'])->name('notifications.open');
+    Route::post('notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.read-all');
+
     // Admin / Receptionist / Accountant / Dentist manageable modules
     Route::middleware('role:admin,receptionist')->group(function () {
         Route::resource('patients', PatientController::class);
