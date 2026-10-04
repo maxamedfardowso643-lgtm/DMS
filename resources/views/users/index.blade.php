@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Users')
-@section('page-title', 'Users &amp; Roles')
+@section('page-title', 'Users & Roles')
 @section('breadcrumb')
     <li class="breadcrumb-item active">Users</li>
 @endsection

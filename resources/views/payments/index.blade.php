@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Payments')
-@section('page-title', 'Payments &amp; Billing')
+@section('page-title', 'Payments & Billing')
 @section('breadcrumb')
     <li class="breadcrumb-item active">Payments</li>
 @endsection

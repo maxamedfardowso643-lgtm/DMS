@@ -118,13 +118,36 @@ class ScheduleController extends Controller
 
     public function update(Request $request, Schedule $schedule): JsonResponse
     {
+        $isWeekly = $schedule->type === 'weekly';
+
         $data = $request->validate([
-            'start_time' => ['nullable', 'date_format:H:i'],
-            'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
-            'is_active' => ['nullable', 'boolean'],
+            'dentist_id' => ['required', 'exists:dentists,id'],
+            'day_of_week' => [Rule::requiredIf($isWeekly), 'nullable', 'integer', 'min:0', 'max:6'],
+            'start_time' => [Rule::requiredIf($isWeekly), 'nullable', 'date_format:H:i'],
+            'end_time' => [Rule::requiredIf($isWeekly), 'nullable', 'date_format:H:i', 'after:start_time'],
+            'leave_date' => [Rule::requiredIf(! $isWeekly), 'nullable', 'date'],
+            'reason' => ['nullable', 'string'],
         ]);
 
-        $schedule->update($data);
+        if ($isWeekly) {
+            $overlaps = Schedule::where('dentist_id', $data['dentist_id'])
+                ->where('type', 'weekly')
+                ->where('day_of_week', $data['day_of_week'])
+                ->where('start_time', '<', $data['end_time'])
+                ->where('end_time', '>', $data['start_time'])
+                ->whereKeyNot($schedule->id)
+                ->exists();
+
+            if ($overlaps) {
+                return response()->json([
+                    'message' => 'The dentist already has working hours overlapping this time on ' . self::DAY_NAMES[$data['day_of_week']] . '.',
+                ], 422);
+            }
+
+            $schedule->update(collect($data)->only(['dentist_id', 'day_of_week', 'start_time', 'end_time'])->all());
+        } else {
+            $schedule->update(collect($data)->only(['dentist_id', 'leave_date', 'reason'])->all());
+        }
 
         return response()->json(['message' => 'Schedule updated successfully.']);
     }

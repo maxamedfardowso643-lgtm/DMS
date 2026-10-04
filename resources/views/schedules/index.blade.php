@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Schedules')
-@section('page-title', 'Dentist Schedules &amp; Leave')
+@section('page-title', 'Dentist Schedules & Leave')
 @section('breadcrumb')
     <li class="breadcrumb-item active">Schedules</li>
 @endsection
@@ -29,7 +29,15 @@
                             <td>{{ $s->type === 'weekly' ? $days[$s->day_of_week] : $s->leave_date?->format('Y-m-d') }}</td>
                             <td>{{ $s->start_time ? substr($s->start_time,0,5).' - '.substr($s->end_time,0,5) : '-' }}</td>
                             <td>{{ $s->reason ?? '-' }}</td>
-                            <td><button class="btn btn-danger btn-xs" onclick="deleteSchedule({{ $s->id }})"><i class="fas fa-trash"></i></button></td>
+                            <td>
+                                <button class="btn btn-warning btn-xs" title="Edit" onclick="editSchedule({{ Js::from([
+                                    'id' => $s->id, 'dentist_id' => $s->dentist_id, 'type' => $s->type,
+                                    'day_of_week' => $s->day_of_week, 'start_time' => $s->start_time ? substr($s->start_time, 0, 5) : null,
+                                    'end_time' => $s->end_time ? substr($s->end_time, 0, 5) : null,
+                                    'leave_date' => $s->leave_date?->format('Y-m-d'), 'reason' => $s->reason,
+                                ]) }})"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-danger btn-xs" title="Delete" onclick="deleteSchedule({{ $s->id }})"><i class="fas fa-trash"></i></button>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-center text-muted">No schedule entries.</td></tr>
@@ -44,8 +52,9 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form id="schedule-form">
+                <input type="hidden" id="schedule_id">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Schedule / Leave</h5>
+                    <h5 class="modal-title" id="schedule-modal-title">Add Schedule / Leave</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -69,7 +78,7 @@
                         $weekOrder = [6 => 'Saturday', 0 => 'Sunday', 1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday'];
                     @endphp
                     <div id="weekly-fields">
-                        <div class="mb-3">
+                        <div class="mb-3" id="day-mode-fields">
                             <label class="form-label d-block">Days</label>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="day_mode" id="day_mode_range" value="range" checked>
@@ -134,8 +143,30 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function openScheduleModal() {
     $('#schedule-form')[0].reset();
-    $('#schedule_type').trigger('change');
+    $('#schedule_id').val('');
+    $('#schedule-modal-title').text('Add Schedule / Leave');
+    $('#schedule_type').prop('disabled', false).trigger('change');
+    $('#day-mode-fields').show();
     toggleDayMode();
+    $('#scheduleModal').modal('show');
+}
+
+// Edits one existing entry: a weekly row covers a single day, and its type can't change.
+function editSchedule(s) {
+    const $f = $('#schedule-form');
+    $f[0].reset();
+    $('#schedule_id').val(s.id);
+    $('#schedule-modal-title').text(s.type === 'weekly' ? 'Edit Working Hours' : 'Edit Leave');
+    $f.find('[name=dentist_id]').val(s.dentist_id);
+    $('#schedule_type').val(s.type).trigger('change').prop('disabled', true);
+    $('#day-mode-fields').hide();
+    $('#day_mode_single').prop('checked', true);
+    toggleDayMode();
+    $f.find('[name=day_of_week]').val(s.day_of_week ?? 0);
+    $f.find('[name=start_time]').val(s.start_time ?? '08:00');
+    $f.find('[name=end_time]').val(s.end_time ?? '20:00');
+    $f.find('[name=leave_date]').val(s.leave_date ?? '');
+    $f.find('[name=reason]').val(s.reason ?? '');
     $('#scheduleModal').modal('show');
 }
 
@@ -169,8 +200,11 @@ toggleDayMode();
 
 $('#schedule-form').on('submit', function (e) {
     e.preventDefault();
+    const id = $('#schedule_id').val();
     $.ajax({
-        url: '{{ route('schedules.store') }}', method: 'POST', data: $(this).serialize(),
+        url: id ? `/schedules/${id}` : '{{ route('schedules.store') }}',
+        method: id ? 'PUT' : 'POST',
+        data: $(this).serialize(),
         success: function (res) {
             toastr.success(res.message);
             location.reload();
