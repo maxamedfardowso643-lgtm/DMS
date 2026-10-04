@@ -22,7 +22,7 @@
             <div class="card-body">
                 <table class="table table-sm">
                     <tr><th>Appointment #</th><td>{{ $appointment->appointment_no }}</td></tr>
-                    <tr><th>Patient</th><td>{{ $appointment->patient->full_name }}</td></tr>
+                    <tr><th>Patient</th><td>{{ $appointment->patient->full_name ?? '-' }}</td></tr>
                     <tr><th>Dentist</th><td>{{ $appointment->dentist->user->name ?? '-' }}</td></tr>
                     <tr><th>Service</th><td>{{ $appointment->service->name ?? '-' }}</td></tr>
                     <tr><th>Date</th><td>{{ $appointment->appointment_date->format('Y-m-d') }}</td></tr>

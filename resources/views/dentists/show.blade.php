@@ -46,7 +46,7 @@
                         @forelse ($dentist->appointments->sortByDesc('appointment_date')->take(20) as $apt)
                             <tr>
                                 <td>{{ $apt->appointment_date->format('Y-m-d') }}</td>
-                                <td>{{ $apt->patient->full_name }}</td>
+                                <td>{{ $apt->patient->full_name ?? '-' }}</td>
                                 <td>{{ $apt->service->name ?? '-' }}</td>
                                 <td><span class="badge bg-{{ $apt->statusBadgeColor() }}">{{ ucfirst(str_replace('_',' ',$apt->status)) }}</span></td>
                             </tr>

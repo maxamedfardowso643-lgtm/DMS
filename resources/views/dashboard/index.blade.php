@@ -99,7 +99,7 @@
                         @forelse ($todaysAppointments as $apt)
                             <tr>
                                 <td>{{ \Illuminate\Support\Carbon::parse($apt->start_time)->format('H:i') }}</td>
-                                <td>{{ $apt->patient->full_name }}</td>
+                                <td>{{ $apt->patient->full_name ?? '-' }}</td>
                                 <td>{{ $apt->dentist->user->name ?? '-' }}</td>
                                 <td>{{ $apt->service->name ?? '-' }}</td>
                                 <td><span class="badge bg-{{ $apt->statusBadgeColor() }}">{{ ucfirst(str_replace('_',' ',$apt->status)) }}</span></td>
