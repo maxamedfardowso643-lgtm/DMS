@@ -55,8 +55,8 @@
 
             <div class="row-line"><span>Receipt No.</span><span>{{ $payment->payment_no }}</span></div>
             <div class="row-line"><span>Date</span><span>{{ $payment->payment_date->format('Y-m-d') }} {{ $payment->created_at->format('H:i') }}</span></div>
-            <div class="row-line"><span>Patient</span><span>{{ $payment->patient->full_name }}</span></div>
-            <div class="row-line"><span>Patient ID</span><span>{{ $payment->patient->patient_code }}</span></div>
+            <div class="row-line"><span>Patient</span><span>{{ $payment->patient->full_name ?? '-' }}</span></div>
+            <div class="row-line"><span>Patient ID</span><span>{{ $payment->patient->patient_code ?? '-' }}</span></div>
             <div class="row-line"><span>Invoice #</span><span>{{ $payment->invoice->invoice_no ?? '-' }}</span></div>
             @if ($payment->discount_amount > 0)
                 <div class="row-line"><span>Discount Applied</span><span>${{ number_format($payment->discount_amount, 2) }}</span></div>

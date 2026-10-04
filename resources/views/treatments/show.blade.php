@@ -14,7 +14,7 @@
             <div class="card-header"><h3 class="card-title">Visit Info</h3></div>
             <div class="card-body">
                 <table class="table table-sm">
-                    <tr><th>Patient</th><td>{{ $treatment->patient->full_name }}</td></tr>
+                    <tr><th>Patient</th><td>{{ $treatment->patient->full_name ?? '-' }}</td></tr>
                     <tr><th>Dentist</th><td>{{ $treatment->dentist->user->name ?? '-' }}</td></tr>
                     <tr><th>Visit Date</th><td>{{ $treatment->visit_date->format('Y-m-d') }}</td></tr>
                     <tr><th>Diagnosis</th><td>{{ $treatment->diagnosis ?? '-' }}</td></tr>

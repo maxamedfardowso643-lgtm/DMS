@@ -20,7 +20,7 @@
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-6">
-                <strong>Patient:</strong> {{ $invoice->patient->full_name }} ({{ $invoice->patient->patient_code }})<br>
+                <strong>Patient:</strong> {{ $invoice->patient->full_name ?? '-' }} ({{ $invoice->patient->patient_code ?? '-' }})<br>
                 <strong>Phone:</strong> {{ $invoice->patient->phone ?? '-' }}
             </div>
             <div class="col-md-6 text-md-end">

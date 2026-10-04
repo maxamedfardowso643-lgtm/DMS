@@ -29,7 +29,7 @@
 
     <table class="totals">
         <tr>
-            <td><strong>Patient:</strong> {{ $invoice->patient->full_name }} ({{ $invoice->patient->patient_code }})</td>
+            <td><strong>Patient:</strong> {{ $invoice->patient->full_name ?? '-' }} ({{ $invoice->patient->patient_code ?? '-' }})</td>
             <td class="text-end"><strong>Issue Date:</strong> {{ $invoice->issue_date->format('Y-m-d') }}</td>
         </tr>
         <tr>

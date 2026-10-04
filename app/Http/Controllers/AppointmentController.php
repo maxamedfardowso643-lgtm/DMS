@@ -13,6 +13,7 @@ use App\Models\Patient;
 use App\Models\Schedule;
 use App\Models\Service;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,7 +49,7 @@ class AppointmentController extends Controller
                 'data' => $appointments->map(fn ($a) => [
                     'id' => $a->id,
                     'appointment_no' => $a->appointment_no,
-                    'patient' => $a->patient->full_name,
+                    'patient' => $a->patient->full_name ?? '-',
                     'dentist' => $a->dentist->user->name ?? '-',
                     'service' => $a->service->name ?? '-',
                     'appointment_date' => $a->appointment_date->format('Y-m-d'),
@@ -80,7 +81,7 @@ class AppointmentController extends Controller
 
         return response()->json($appointments->map(fn ($a) => [
             'id' => $a->id,
-            'title' => "{$a->patient->full_name} - {$a->service->name}",
+            'title' => ($a->patient->full_name ?? '-') . ' - ' . ($a->service->name ?? '-'),
             'start' => "{$a->appointment_date->format('Y-m-d')}T{$a->start_time}",
             'end' => "{$a->appointment_date->format('Y-m-d')}T{$a->end_time}",
             'color' => match ($a->statusBadgeColor()) {
@@ -161,7 +162,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
         }
 
-        $appointment = DB::transaction(function () use ($request, $start, $end) {
+        $appointment = $this->retryOnDuplicateNumber(fn () => DB::transaction(function () use ($request, $start, $end) {
             $appointment = Appointment::create([
                 'appointment_no' => $this->nextNumber(),
                 'patient_id' => $request->patient_id,
@@ -184,11 +185,20 @@ class AppointmentController extends Controller
             ]);
 
             return $appointment;
-        });
+        }));
 
         ActivityLog::log('created', "Appointment {$appointment->appointment_no} booked", $appointment);
 
         return response()->json(['message' => 'Appointment booked successfully.', 'appointment' => $appointment], 201);
+    }
+
+    /**
+     * Two bookings saved at the same moment can compute the same appointment
+     * number; retry so the second one picks the next free number.
+     */
+    protected function retryOnDuplicateNumber(callable $callback): mixed
+    {
+        return retry(3, $callback, 50, fn ($e) => $e instanceof UniqueConstraintViolationException);
     }
 
     protected function nextNumber(): string
@@ -372,7 +382,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
         }
 
-        [$appointment, $invoice] = DB::transaction(function () use ($request, $start, $end, $service, $patient) {
+        [$appointment, $invoice] = $this->retryOnDuplicateNumber(fn () => DB::transaction(function () use ($request, $start, $end, $service, $patient) {
             $appointment = Appointment::create([
                 'appointment_no' => $this->nextNumber(),
                 'patient_id' => $patient->id,
@@ -422,7 +432,7 @@ class AppointmentController extends Controller
             ]);
 
             return [$appointment, $invoice];
-        });
+        }));
 
         ActivityLog::log('created', "Appointment {$appointment->appointment_no} self-booked", $appointment);
 

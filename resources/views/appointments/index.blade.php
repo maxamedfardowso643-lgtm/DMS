@@ -256,9 +256,13 @@ $('#appointment-form').on('submit', function (e) {
     const id = $('#appointment_id').val();
     const url = id ? `/appointments/${id}` : '{{ route('appointments.store') }}';
     const method = id ? 'PUT' : 'POST';
+    const $submit = $(this).find('[type=submit]');
+    if ($submit.prop('disabled')) return;
+    $submit.prop('disabled', true);
 
     $.ajax({
         url, method, data: $(this).serialize(),
+        complete: () => $submit.prop('disabled', false),
         success: function (res) {
             $('#bookModal').modal('hide');
             toastr.success(res.message);

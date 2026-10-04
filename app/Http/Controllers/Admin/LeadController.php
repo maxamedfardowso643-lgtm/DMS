@@ -13,6 +13,7 @@ use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Testimonial;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -75,7 +76,8 @@ class LeadController extends Controller
             return response()->json(['message' => 'This dentist already has an appointment in that time slot.'], 422);
         }
 
-        $appointment = DB::transaction(function () use ($data, $start, $end, $appointmentRequest) {
+        // Retry if a concurrent booking grabbed the same appointment/patient number.
+        $appointment = retry(3, fn () => DB::transaction(function () use ($data, $start, $end, $appointmentRequest) {
             $patient = isset($data['patient_id'])
                 ? Patient::findOrFail($data['patient_id'])
                 : Patient::create([
@@ -111,7 +113,7 @@ class LeadController extends Controller
             $appointmentRequest->update(['status' => 'converted']);
 
             return $appointment;
-        });
+        }), 50, fn ($e) => $e instanceof UniqueConstraintViolationException);
 
         ActivityLog::log('created', "Appointment {$appointment->appointment_no} created from website lead", $appointment);
 
