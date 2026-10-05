@@ -17,7 +17,7 @@ class PublicController extends Controller
     public function home(): View
     {
         $services = Service::where('is_active', true)->orderBy('id')->take(6)->get();
-        $dentists = Dentist::with('user')->where('is_active', true)->take(4)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->take(4)->get();
         $stats = [
             'patients' => \App\Models\Patient::count(),
             'dentists' => Dentist::where('is_active', true)->count(),
@@ -31,7 +31,7 @@ class PublicController extends Controller
 
     public function about(): View
     {
-        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
 
         return view('public.about', compact('dentists'));
     }
@@ -45,7 +45,7 @@ class PublicController extends Controller
 
     public function team(): View
     {
-        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
 
         return view('public.team', compact('dentists'));
     }
