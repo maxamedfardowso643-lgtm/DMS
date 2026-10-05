@@ -32,10 +32,10 @@ class DentistController extends Controller
                 'data' => $dentists->map(fn ($d) => [
                     'id' => $d->id,
                     'dentist_code' => $d->dentist_code,
-                    'name' => $d->user->name,
-                    'email' => $d->user->email,
+                    'name' => $d->user->name ?? '(deleted user)',
+                    'email' => $d->user->email ?? '-',
                     'specialization' => $d->specialization,
-                    'photo' => $d->user->photo,
+                    'photo' => $d->user?->photo,
                     'is_active' => $d->is_active,
                 ]),
             ]);

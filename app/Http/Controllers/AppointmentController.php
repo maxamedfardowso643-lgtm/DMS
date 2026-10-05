@@ -70,7 +70,7 @@ class AppointmentController extends Controller
         }
 
         $patients = Patient::orderBy('first_name')->get();
-        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
         $services = Service::where('is_active', true)->get();
 
         return view('appointments.index', compact('patients', 'dentists', 'services'));
@@ -456,7 +456,7 @@ class AppointmentController extends Controller
 
     public function bookingForm(): View
     {
-        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
         $services = Service::where('is_active', true)->get();
 
         return view('appointments.book', compact('dentists', 'services'));

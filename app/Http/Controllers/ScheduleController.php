@@ -16,7 +16,7 @@ class ScheduleController extends Controller
 
     public function index(): View
     {
-        $dentists = Dentist::with(['user', 'schedules'])->get();
+        $dentists = Dentist::with(['user', 'schedules'])->whereHas('user')->get();
 
         return view('schedules.index', compact('dentists'));
     }

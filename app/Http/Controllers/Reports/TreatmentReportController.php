@@ -33,7 +33,7 @@ class TreatmentReportController extends Controller
             'filters' => $filters,
             'rows' => $rows,
             'summary' => $summary,
-            'dentists' => Dentist::with('user')->where('is_active', true)->get(),
+            'dentists' => Dentist::with('user')->whereHas('user')->where('is_active', true)->get(),
             'services' => Service::where('is_active', true)->orderBy('name')->get(),
             'categories' => Service::whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
         ]);

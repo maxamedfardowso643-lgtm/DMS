@@ -28,7 +28,7 @@ class LeadController extends Controller
         $bookingRequests = AppointmentRequest::with('service')->latest()->get();
         $contactMessages = ContactMessage::latest()->get();
         $testimonials = Testimonial::latest()->get();
-        $dentists = Dentist::with('user')->where('is_active', true)->get();
+        $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
         $services = Service::where('is_active', true)->get();
 
         return view('admin.leads.index', compact('bookingRequests', 'contactMessages', 'testimonials', 'dentists', 'services'));

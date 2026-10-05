@@ -105,7 +105,7 @@ class FinancialReportController extends Controller
             'byService' => $byService,
             'byMethod' => $byMethod,
             'agingReceivables' => $agingReceivables,
-            'dentists' => Dentist::with('user')->where('is_active', true)->get(),
+            'dentists' => Dentist::with('user')->whereHas('user')->where('is_active', true)->get(),
             'services' => Service::where('is_active', true)->orderBy('name')->get(),
             'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('name')->get(),
         ]);

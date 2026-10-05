@@ -33,7 +33,7 @@ class AppointmentReportController extends Controller
             'range' => $range,
             'filters' => $filters,
             'appointments' => $appointments,
-            'dentists' => Dentist::with('user')->where('is_active', true)->get(),
+            'dentists' => Dentist::with('user')->whereHas('user')->where('is_active', true)->get(),
             'services' => Service::where('is_active', true)->orderBy('name')->get(),
             'statuses' => self::STATUSES,
         ]);

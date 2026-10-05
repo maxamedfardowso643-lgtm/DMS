@@ -25,7 +25,7 @@ class PatientReportController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $dentists = \App\Models\Dentist::with('user')->where('is_active', true)->get();
+        $dentists = \App\Models\Dentist::with('user')->whereHas('user')->where('is_active', true)->get();
 
         return view('reports.patients.registration', [
             'range' => $range,

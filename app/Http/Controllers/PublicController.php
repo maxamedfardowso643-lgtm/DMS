@@ -20,7 +20,7 @@ class PublicController extends Controller
         $dentists = Dentist::with('user')->whereHas('user')->where('is_active', true)->take(4)->get();
         $stats = [
             'patients' => \App\Models\Patient::count(),
-            'dentists' => Dentist::where('is_active', true)->count(),
+            'dentists' => Dentist::whereHas('user')->where('is_active', true)->count(),
             'services' => Service::where('is_active', true)->count(),
             'years' => 8,
         ];
