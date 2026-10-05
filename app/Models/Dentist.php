@@ -21,6 +21,14 @@ class Dentist extends Model
         return ['is_active' => 'boolean'];
     }
 
+    public static function nextCode(): string
+    {
+        $last = static::withTrashed()->orderByDesc('dentist_code')->value('dentist_code');
+        $next = $last ? ((int) substr($last, -4)) + 1 : 1;
+
+        return 'DEN-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

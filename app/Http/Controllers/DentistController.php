@@ -64,7 +64,7 @@ class DentistController extends Controller
 
             return Dentist::create([
                 'user_id' => $user->id,
-                'dentist_code' => $this->nextCode(),
+                'dentist_code' => Dentist::nextCode(),
                 'specialization' => $request->specialization,
                 'license_number' => $request->license_number,
                 'bio' => $request->bio,
@@ -75,14 +75,6 @@ class DentistController extends Controller
         ActivityLog::log('created', "Dentist {$dentist->user->name} added", $dentist);
 
         return response()->json(['message' => 'Dentist added successfully.'], 201);
-    }
-
-    protected function nextCode(): string
-    {
-        $last = Dentist::withTrashed()->orderByDesc('dentist_code')->value('dentist_code');
-        $next = $last ? ((int) substr($last, -4)) + 1 : 1;
-
-        return 'DEN-' . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     public function show(Dentist $dentist): View

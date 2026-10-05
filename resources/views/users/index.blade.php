@@ -32,6 +32,14 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="user_id" id="user_id">
+                    <div class="d-flex align-items-center gap-3 mb-4 p-3" style="background:var(--surface-2);border-radius:var(--radius);">
+                        <img id="user-photo-preview" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=User"
+                             style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--border);">
+                        <div>
+                            <label class="form-label mb-1">Photo</label>
+                            <input type="file" name="photo" accept="image/*" class="form-control form-control-sm" onchange="previewUserPhoto(this)">
+                        </div>
+                    </div>
                     <div class="mb-3"><label class="form-label">Name *</label><input type="text" name="name" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">Email *</label><input type="email" name="email" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" class="form-control"></div>
@@ -68,7 +76,8 @@ $(function () {
         processing: true, serverSide: true,
         ajax: { url: '{{ route('users.index') }}', type: 'GET' },
         columns: [
-            { data: 'name' }, { data: 'email' }, { data: 'roles', defaultContent: '-' },
+            { data: 'name', render: (d, t, row) => `<img src="${row.photo_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;">${$('<span>').text(d).html()}` },
+            { data: 'email' }, { data: 'roles', defaultContent: '-' },
             { data: 'is_active', render: d => d ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>' },
             { data: null, orderable: false, searchable: false, render: row => `
                 <button class="btn btn-warning btn-xs" onclick='openEditUser(${row.id})'><i class="fas fa-edit"></i></button>
@@ -81,8 +90,17 @@ $(function () {
     });
 });
 
+const defaultUserPhoto = $('#user-photo-preview').attr('src');
+
+function previewUserPhoto(input) {
+    if (input.files && input.files[0]) {
+        $('#user-photo-preview').attr('src', URL.createObjectURL(input.files[0]));
+    }
+}
+
 function openCreateUser() {
     $('#user-form')[0].reset();
+    $('#user-photo-preview').attr('src', defaultUserPhoto);
     $('#user_id').val('');
     $('#user-form [name="password"]').prop('required', true);
     $('#pw-hint').text('');
@@ -97,6 +115,7 @@ function openEditUser(id) {
         $('#user_id').val(u.id);
         $.each(u, (k, v) => {
             if (k === 'is_active') $('#is_active').prop('checked', !!v);
+            else if (k === 'photo_url') $('#user-photo-preview').attr('src', v);
             else $(`#user-form [name="${k}"]`).val(v);
         });
         $('#user-form [name="password"]').prop('required', false);
@@ -111,9 +130,12 @@ $('#user-form').on('submit', function (e) {
     e.preventDefault();
     const id = $('#user_id').val();
     const url = id ? `/users/${id}` : '{{ route('users.store') }}';
-    const method = id ? 'PUT' : 'POST';
+    // FormData so the photo file is sent; PUT goes as POST + _method.
+    const formData = new FormData(this);
+    if (id) formData.append('_method', 'PUT');
+    if (id && !$('#is_active').is(':checked')) formData.append('is_active', '0');
     $.ajax({
-        url, method, data: $(this).serialize(),
+        url, method: 'POST', data: formData, processData: false, contentType: false,
         success: function (res) {
             $('#userModal').modal('hide');
             toastr.success(res.message);
