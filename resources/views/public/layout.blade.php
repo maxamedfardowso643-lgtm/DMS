@@ -14,7 +14,7 @@
 
 @php
     $clinicName = \App\Models\Setting::get('clinic_name', config('app.name'));
-    $clinicLogo = \App\Models\Setting::get('clinic_logo');
+    $clinicLogo = \App\Models\Setting::logo();
     $clinicPhone = \App\Models\Setting::get('clinic_phone');
 @endphp
 

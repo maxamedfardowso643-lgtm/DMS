@@ -36,7 +36,7 @@
     <div class="receipt">
         <div class="receipt-head">
             <div class="logo">
-                @php $logo = \App\Models\Setting::get('clinic_logo'); @endphp
+                @php $logo = \App\Models\Setting::logo(); @endphp
                 @if ($logo)
                     <img src="{{ asset('storage/' . $logo) }}" style="width:100%;height:100%;object-fit:cover;">
                 @else

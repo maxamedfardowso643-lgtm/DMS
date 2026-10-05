@@ -11,7 +11,7 @@
 <body>
 @php
     $clinicName = \App\Models\Setting::get('clinic_name', config('app.name'));
-    $clinicLogo = \App\Models\Setting::get('clinic_logo');
+    $clinicLogo = \App\Models\Setting::logo();
 @endphp
 <div class="login-centered">
     <div class="login-card">

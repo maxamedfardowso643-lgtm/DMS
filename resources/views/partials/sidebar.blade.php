@@ -1,7 +1,7 @@
 @php
     $user = auth()->user();
     $clinicName = \App\Models\Setting::get('clinic_name', config('app.name'));
-    $clinicLogo = \App\Models\Setting::get('clinic_logo');
+    $clinicLogo = \App\Models\Setting::logo();
 @endphp
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="{{ route('dashboard') }}" class="brand-link">

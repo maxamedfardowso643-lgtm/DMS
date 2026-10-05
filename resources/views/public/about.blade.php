@@ -15,7 +15,7 @@
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <div class="about-logo-panel">
-                    @php $logo = \App\Models\Setting::get('clinic_logo'); @endphp
+                    @php $logo = \App\Models\Setting::logo(); @endphp
                     @if ($logo)
                         <img src="{{ asset('storage/' . $logo) }}" alt="{{ \App\Models\Setting::get('clinic_name', config('app.name')) }}">
                     @else

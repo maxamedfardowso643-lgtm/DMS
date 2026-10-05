@@ -18,9 +18,9 @@
 </head>
 <body>
     <div class="header">
-        @php $logo = \App\Models\Setting::get('clinic_logo'); @endphp
+        @php $logo = \App\Models\Setting::logo(); @endphp
         @if ($logo)
-            <img src="{{ public_path('storage/' . $logo) }}" alt="Logo">
+            <img src="{{ Storage::disk('public')->path($logo) }}" alt="Logo">
         @endif
         <h2>{{ \App\Models\Setting::get('clinic_name', config('app.name')) }}</h2>
         <p>{{ \App\Models\Setting::get('clinic_address') }} | {{ \App\Models\Setting::get('clinic_phone') }}</p>

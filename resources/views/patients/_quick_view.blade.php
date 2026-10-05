@@ -3,7 +3,7 @@
     $age = $patient->date_of_birth ? $patient->date_of_birth->age : null;
 @endphp
 <div class="qv-header">
-    <img src="{{ $patient->photo ? asset('storage/' . $patient->photo) : 'https://ui-avatars.com/api/?background=4f46e5&color=fff&name=' . urlencode($patient->full_name) }}"
+    <img src="{{ $patient->photoUrl() }}"
          class="qv-avatar">
     <div>
         <h4 class="mb-0">{{ $patient->full_name }}</h4>

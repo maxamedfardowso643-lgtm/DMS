@@ -6,6 +6,7 @@ use App\Http\Requests\StorePatientRequest;
 use App\Models\ActivityLog;
 use App\Models\DentalChartEntry;
 use App\Models\Patient;
+use App\Support\Uploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -169,7 +170,7 @@ class PatientController extends Controller
         $data['patient_code'] = $this->nextCode();
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('patients', 'public');
+            $data['photo'] = Uploads::store($request->file('photo'), 'patients');
         }
 
         $patient = Patient::create($data);
@@ -206,7 +207,7 @@ class PatientController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('patients', 'public');
+            $data['photo'] = Uploads::store($request->file('photo'), 'patients');
         } else {
             unset($data['photo']);
         }

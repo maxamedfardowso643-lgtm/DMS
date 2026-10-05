@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Setting;
+use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,7 +19,7 @@ class SettingController extends Controller
             'invoice_prefix', 'appointment_prefix', 'clinic_logo',
         ];
 
-        $settings = collect($keys)->mapWithKeys(fn ($key) => [$key => Setting::get($key)]);
+        $settings = collect($keys)->mapWithKeys(fn ($key) => [$key => $key === 'clinic_logo' ? Setting::logo() : Setting::get($key)]);
 
         return view('settings.edit', compact('settings'));
     }
@@ -40,7 +41,7 @@ class SettingController extends Controller
         ]);
 
         if ($request->hasFile('logo')) {
-            $data['clinic_logo'] = $request->file('logo')->store('branding', 'public');
+            $data['clinic_logo'] = Uploads::store($request->file('logo'), 'branding');
         }
         unset($data['logo']);
 

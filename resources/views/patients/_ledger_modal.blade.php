@@ -1,5 +1,5 @@
 @php
-    $logo = \App\Models\Setting::get('clinic_logo');
+    $logo = \App\Models\Setting::logo();
     $clinicName = \App\Models\Setting::get('clinic_name', config('app.name'));
 @endphp
 <div class="ledger-sheet">

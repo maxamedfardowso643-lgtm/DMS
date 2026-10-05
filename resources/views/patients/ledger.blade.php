@@ -49,7 +49,7 @@
         <div class="sheet-head">
             <div class="brand">
                 <div class="mark">
-                    @php $logo = \App\Models\Setting::get('clinic_logo'); @endphp
+                    @php $logo = \App\Models\Setting::logo(); @endphp
                     @if ($logo)<img src="{{ asset('storage/' . $logo) }}">@else M @endif
                 </div>
                 <div class="name">{{ \App\Models\Setting::get('clinic_name', config('app.name')) }}</div>

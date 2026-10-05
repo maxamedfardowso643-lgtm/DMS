@@ -18,7 +18,7 @@
         <div class="card card-primary card-outline">
             <div class="card-body box-profile text-center">
                 <img class="profile-user-img img-fluid img-circle" style="width:100px;height:100px;object-fit:cover;"
-                     src="{{ $patient->photo ? asset('storage/' . $patient->photo) : 'https://ui-avatars.com/api/?name=' . urlencode($patient->full_name) }}">
+                     src="{{ $patient->photoUrl() }}">
                 <h3 class="profile-username text-center mt-2">{{ $patient->full_name }}</h3>
                 <p class="text-muted text-center">{{ $patient->patient_code }}</p>
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Uploads;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -79,10 +80,15 @@ class User extends Authenticatable
      */
     public function photoUrl(int $size = 128): string
     {
-        if (! $this->photo) {
+        if (str_starts_with((string) $this->photo, 'images/')) {
+            return asset($this->photo);
+        }
+
+        // Uploads lost in a redeploy with no database copy fall back to initials.
+        if (! $this->photo || ! Uploads::ensureOnDisk($this->photo)) {
             return 'https://ui-avatars.com/api/?background=4f46e5&color=fff&size=' . $size . '&name=' . urlencode($this->name);
         }
 
-        return str_starts_with($this->photo, 'images/') ? asset($this->photo) : asset('storage/' . $this->photo);
+        return asset('storage/' . $this->photo);
     }
 }

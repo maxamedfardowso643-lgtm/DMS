@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Dentist;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Uploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ class DentistController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'phone' => $request->phone,
-                'photo' => $request->hasFile('photo') ? $request->file('photo')->store('avatars', 'public') : null,
+                'photo' => $request->hasFile('photo') ? Uploads::store($request->file('photo'), 'avatars') : null,
                 'is_active' => true,
             ]);
             $user->roles()->syncWithoutDetaching(Role::where('slug', Role::DENTIST)->value('id'));
@@ -128,7 +129,7 @@ class DentistController extends Controller
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'password' => $request->filled('password') ? Hash::make($request->password) : $dentist->user->password,
-                'photo' => $request->hasFile('photo') ? $request->file('photo')->store('avatars', 'public') : $dentist->user->photo,
+                'photo' => $request->hasFile('photo') ? Uploads::store($request->file('photo'), 'avatars') : $dentist->user->photo,
             ]);
 
             $dentist->update([

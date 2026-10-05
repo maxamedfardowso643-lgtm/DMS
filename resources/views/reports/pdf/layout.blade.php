@@ -25,7 +25,7 @@
 </head>
 <body>
     <div class="header">
-        @php $logo = \App\Models\Setting::get('clinic_logo'); @endphp
+        @php $logo = \App\Models\Setting::logo(); @endphp
         @if ($logo)
             <img src="{{ public_path('storage/' . $logo) }}" alt="Logo">
         @endif

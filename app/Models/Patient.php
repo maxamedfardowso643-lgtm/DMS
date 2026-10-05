@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Uploads;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +30,16 @@ class Patient extends Model
     public function getFullNameAttribute(): string
     {
         return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    public function photoUrl(): string
+    {
+        // Uploads lost in a redeploy with no database copy fall back to initials.
+        if (! $this->photo || ! Uploads::ensureOnDisk($this->photo)) {
+            return 'https://ui-avatars.com/api/?background=4f46e5&color=fff&name=' . urlencode($this->full_name);
+        }
+
+        return asset('storage/' . $this->photo);
     }
 
     public function user(): BelongsTo

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +30,7 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('avatars', 'public');
+            $data['photo'] = Uploads::store($request->file('photo'), 'avatars');
         } else {
             unset($data['photo']);
         }

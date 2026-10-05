@@ -21,9 +21,13 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StoredFileController;
 use App\Http\Controllers\TreatmentController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+
+// Uploaded images (restored from the database if the disk lost them)
+Route::get('/storage/{path}', [StoredFileController::class, 'show'])->where('path', '.*')->name('stored-file');
 
 // Public marketing website
 Route::get('/', [PublicController::class, 'home'])->name('public.home');
