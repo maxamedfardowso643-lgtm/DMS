@@ -93,7 +93,7 @@
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label">Date *</label>
-                            <input type="date" name="appointment_date" id="appointment_date" class="form-control" required min="{{ date('Y-m-d') }}">
+                            <input type="date" name="appointment_date" id="appointment_date" class="form-control" required min="{{ now(config('app.clinic_timezone'))->toDateString() }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Available Time Slots *</label>
@@ -167,30 +167,38 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: { url: '{{ route('appointments.index') }}', type: 'GET' },
+        order: [[4, 'desc']],
         columns: [
             { data: 'appointment_no' },
-            { data: 'patient' },
-            { data: 'dentist' },
-            { data: 'service' },
+            { data: 'patient', orderable: false },
+            { data: 'dentist', orderable: false },
+            { data: 'service', orderable: false },
             { data: 'appointment_date' },
             { data: 'start_time' },
             { data: null, render: r => `<span class="badge bg-${r.status_color}">${r.status.replace('_',' ')}</span>` },
             {
-                data: 'id', orderable: false, searchable: false,
-                render: (id) => `
-                    <a href="/appointments/${id}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
-                    <button class="btn btn-secondary btn-xs" onclick='openStatusModal(${id})'><i class="fas fa-sync"></i></button>
-                    <button class="btn btn-danger btn-xs" onclick="deleteAppointment(${id})"><i class="fas fa-trash"></i></button>
+                data: null, orderable: false, searchable: false,
+                render: (r) => `
+                    <a href="/appointments/${r.id}" class="btn btn-info btn-xs" title="View"><i class="fas fa-eye"></i></a>
+                    <button class="btn btn-primary btn-xs" title="Edit" onclick="editAppointment(${r.id})"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-secondary btn-xs" title="Change status" onclick="openStatusModal(${r.id}, '${r.status}')"><i class="fas fa-sync"></i></button>
+                    <button class="btn btn-danger btn-xs" title="Delete" onclick="deleteAppointment(${r.id})"><i class="fas fa-trash"></i></button>
                 `
             }
         ]
     });
+
+    // The list starts in a hidden tab, so its column widths are wrong until redrawn.
+    $('a[href="#list-view"]').on('shown.bs.tab', () => appointmentsTable.columns.adjust());
+    $('a[href="#calendar-view"]').on('shown.bs.tab', () => calendar.updateSize());
 
     const calendarEl = document.getElementById('calendar');
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
         editable: true,
+        // Length comes from the service; dragging an edge would change nothing on the server.
+        eventDurationEditable: false,
         events: function (info, success, failure) {
             $.get('{{ route('appointments.calendar-events') }}', { start: info.startStr, end: info.endStr }, success).fail(failure);
         },
@@ -199,7 +207,7 @@ $(function () {
                 appointment_date: info.event.startStr.substring(0, 10),
                 start_time: info.event.startStr.substring(11, 16),
             }).done(res => { toastr.success(res.message); calendar.refetchEvents(); appointmentsTable.ajax.reload(); })
-              .fail(() => { toastr.error('Could not reschedule (conflict).'); info.revert(); });
+              .fail(xhr => { toastr.error(xhr.responseJSON?.message || 'Could not reschedule.'); info.revert(); });
         },
         eventClick: function (info) {
             window.location.href = `/appointments/${info.event.id}`;
@@ -218,13 +226,46 @@ $(function () {
     }
 });
 
-function openBookModal() {
-    $('#appointment-form')[0].reset();
+const todayMin = $('#appointment_date').attr('min');
+// The appointment being edited, so its own (possibly past) slot stays selectable.
+let editing = null;
+
+function resetBookForm() {
+    const $form = $('#appointment-form');
+    $form[0].reset();
+    $form.find('.is-invalid').removeClass('is-invalid');
+    $form.find('.invalid-feedback').remove();
     $('#appointment_id').val('');
     $('#apt_patient_id').val('');
     $('#apt_patient_meta').text('');
+    $('#appointment_date').attr('min', todayMin);
+    $('#slots_select').html('<option value="">Select dentist, service &amp; date first</option>');
+    editing = null;
+}
+
+function openBookModal() {
+    resetBookForm();
     $('#bookModalLabel').text('Book Appointment');
     $('#bookModal').modal('show');
+}
+
+function editAppointment(id) {
+    $.get(`/appointments/${id}/edit`).done(function (a) {
+        resetBookForm();
+        editing = a;
+        $('#appointment_id').val(a.id);
+        $('#apt_patient_id').val(a.patient_id);
+        $('#apt_patient_search').val(a.patient_name);
+        $('#dentist_select').val(a.dentist_id);
+        $('#service_select').val(a.service_id);
+        $('#appointment-form [name=source]').val(a.source);
+        $('#appointment-form [name=notes]').val(a.notes);
+        if (a.appointment_date < todayMin) $('#appointment_date').attr('min', a.appointment_date);
+        $('#appointment_date').val(a.appointment_date);
+        $('#bookModalLabel').text(`Edit Appointment ${a.appointment_no}`);
+        fetchSlots();
+        $('#bookModal').modal('show');
+    }).fail(xhr => toastr.error(xhr.responseJSON?.message || 'Could not load appointment.'));
 }
 
 function fetchSlots() {
@@ -233,14 +274,27 @@ function fetchSlots() {
     const date = $('#appointment_date').val();
     if (!dentist_id || !service_id || !date) return;
 
-    $.get('{{ route('appointments.available-slots') }}', { dentist_id, service_id, date }, function (res) {
+    const params = { dentist_id, service_id, date };
+    if (editing) params.exclude = editing.id;
+
+    $.get('{{ route('appointments.available-slots') }}', params, function (res) {
         const select = $('#slots_select');
+        const slots = res.slots.slice();
+
+        // Keep the current time when only notes/source/patient are being changed.
+        const unchangedSlot = editing && dentist_id == editing.dentist_id && service_id == editing.service_id && date === editing.appointment_date;
+        if (unchangedSlot && !slots.includes(editing.start_time)) {
+            slots.push(editing.start_time);
+            slots.sort();
+        }
+
         select.empty();
-        if (res.slots.length === 0) {
+        if (slots.length === 0) {
             select.append(`<option value="">${res.message || 'No slots available'}</option>`);
         } else {
             select.append('<option value="">Select a time</option>');
-            res.slots.forEach(s => select.append(`<option value="${s}">${s}</option>`));
+            slots.forEach(s => select.append(`<option value="${s}">${s}</option>`));
+            if (unchangedSlot) select.val(editing.start_time);
         }
     });
 }
@@ -279,8 +333,10 @@ $('#appointment-form').on('submit', function (e) {
     });
 });
 
-function openStatusModal(id) {
+function openStatusModal(id, status) {
     $('#status_appointment_id').val(id);
+    $('#status_select').val(status || 'booked');
+    $('#status_remarks').val('');
     $('#statusModal').modal('show');
 }
 
@@ -295,7 +351,7 @@ $('#status-form').on('submit', function (e) {
         toastr.success(res.message);
         appointmentsTable.ajax.reload();
         calendar.refetchEvents();
-    }).fail(() => toastr.error('Could not update status.'));
+    }).fail(xhr => toastr.error(xhr.responseJSON?.message || 'Could not update status.'));
 });
 
 function deleteAppointment(id) {

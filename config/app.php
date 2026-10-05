@@ -67,6 +67,10 @@ return [
 
     'timezone' => env('APP_TIMEZONE', 'UTC'),
 
+    // Appointment times are entered in the clinic's local time, so "is this
+    // slot already past?" has to be answered in that zone, not in UTC.
+    'clinic_timezone' => env('CLINIC_TIMEZONE', 'Africa/Mogadishu'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

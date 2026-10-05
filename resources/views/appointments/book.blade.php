@@ -35,7 +35,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Date *</label>
-                            <input type="date" name="appointment_date" id="appointment_date" class="form-control" required min="{{ date('Y-m-d') }}">
+                            <input type="date" name="appointment_date" id="appointment_date" class="form-control" required min="{{ now(config('app.clinic_timezone'))->toDateString() }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Available Time Slots *</label>
